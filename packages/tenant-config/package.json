@@ -1,0 +1,25 @@
+{
+  "name": "@flowcheq/tenant-config",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared zod schemas for Flowcheq tenant configuration",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "vitest": "^4.0.0"
+  }
+}
