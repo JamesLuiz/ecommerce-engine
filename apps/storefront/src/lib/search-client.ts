@@ -3,8 +3,6 @@ import {
   type MedusaSdkLike,
 } from "@medusajs/instantsearch-adapter"
 
-import { sdk } from "@lib/config"
-
 export const PRODUCT_INDEX_NAME = "product"
 
 /**
@@ -38,20 +36,27 @@ export const priceAttribute = (field: PriceField, currencyCode: string) =>
  * Shared by the navbar search drawer and the store listing. An empty query
  * searches rather than short-circuiting, which is what the listing needs to
  * show every product before anything is refined.
+ *
+ * Takes the SDK as an argument because the SDK is built from runtime config in
+ * a client component, not from module-level env vars baked at build time.
  */
-export const { searchClient } = createInstantSearchAdapter({
-  sdk: sdk as unknown as MedusaSdkLike,
-  path: "/store/search",
-  additionalSearchParameters: {
-    search_options: {
-      match_strategy: "last",
+export const createSearchClient = (sdk: MedusaSdkLike) => {
+  const { searchClient } = createInstantSearchAdapter({
+    sdk,
+    path: "/store/search",
+    additionalSearchParameters: {
+      search_options: {
+        match_strategy: "last",
+      },
     },
-  },
-  // Range widgets read `facets_stats`, which the adapter only produces for
-  // fields listed here. The price fields are declared with a `stats` facet on
-  // the index, which is what makes the stats available at all.
-  numericAttributes: SEARCH_PRICE_CURRENCIES.flatMap((currency) => [
-    `min_price_${currency}`,
-    `max_price_${currency}`,
-  ]),
-})
+    // Range widgets read `facets_stats`, which the adapter only produces for
+    // fields listed here. The price fields are declared with a `stats` facet on
+    // the index, which is what makes the stats available at all.
+    numericAttributes: SEARCH_PRICE_CURRENCIES.flatMap((currency) => [
+      `min_price_${currency}`,
+      `max_price_${currency}`,
+    ]),
+  })
+
+  return searchClient
+}

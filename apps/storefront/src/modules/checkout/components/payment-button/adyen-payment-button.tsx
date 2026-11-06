@@ -10,16 +10,13 @@ import type {
   SubmitActions,
 } from "@adyen/adyen-web"
 import { isAdyen } from "@lib/constants"
+import { useStoreConfig } from "@lib/config-provider"
 import { AdyenPaymentResult, submitAdyenPayment } from "@lib/data/adyen"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import { useParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import ErrorMessage from "../error-message"
-
-const clientKey = process.env.NEXT_PUBLIC_ADYEN_CLIENT_KEY
-const environment =
-  process.env.NEXT_PUBLIC_ADYEN_ENVIRONMENT === "live" ? "live" : "test"
 
 type AdyenPaymentButtonProps = {
   cart: HttpTypes.StoreCart
@@ -34,6 +31,10 @@ const AdyenPaymentButton = ({
   notReady,
   "data-testid": dataTestId,
 }: AdyenPaymentButtonProps) => {
+  const {
+    adyenClientKey: clientKey,
+    adyenEnvironment: environment,
+  } = useStoreConfig()
   const containerRef = useRef<HTMLDivElement>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const { countryCode } = useParams()
@@ -156,7 +157,7 @@ const AdyenPaymentButton = ({
         error={
           clientKey
             ? errorMessage
-            : "Adyen client key is missing. Set the NEXT_PUBLIC_ADYEN_CLIENT_KEY environment variable."
+            : "Adyen client key is missing. Set ADYEN_CLIENT_KEY for this tenant."
         }
         data-testid="adyen-payment-error-message"
       />

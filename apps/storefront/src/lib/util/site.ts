@@ -1,13 +1,13 @@
 import "server-only"
 import { headers } from "next/headers"
 
-export const STORE_NAME = "Medusa Store"
+import { getRuntimeConfig } from "@lib/runtime-config"
 
-export const DEFAULT_COUNTRY_CODE = (
-  process.env.NEXT_PUBLIC_DEFAULT_REGION || "dk"
-).toLowerCase()
+export const STORE_NAME = getRuntimeConfig().storeName
 
-const configuredUrl = () => process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "")
+export const DEFAULT_COUNTRY_CODE = getRuntimeConfig().defaultCountryCode
+
+const configuredUrl = () => getRuntimeConfig().storeBaseUrl
 
 const originFromHeaders = (get: (name: string) => string | null) => {
   const host = (get("x-forwarded-host") ?? get("host"))?.split(",")[0].trim()

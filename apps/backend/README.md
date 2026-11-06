@@ -1,3 +1,34 @@
+# Flowcheq tenant backend
+
+Medusa backend for a single tenant. Every instance is created from the same
+image; database URL, CORS origins, secrets and tenant data arrive as environment
+variables at container start (see the repository `.env.example`).
+
+## Run and test
+
+```bash
+npm run dev --workspace=@dtc/backend          # http://localhost:9000, admin at /app
+npm run build --workspace=@dtc/backend        # output in .medusa/server
+npm run lint --workspace=@dtc/backend
+npm run test:unit --workspace=@dtc/backend
+```
+
+Integration suites need a reachable PostgreSQL; run them from `apps/backend`.
+
+## Tenant bootstrap
+
+`src/scripts/bootstrap-tenant.ts` is idempotent and runs after migrations on
+every container start. It reads `TENANT_CONFIG` (JSON, validated by
+`@flowcheq/tenant-config`) and ensures the store name and currency, one region,
+one sales channel named after the business, one `storefront` publishable key
+linked to that channel, and one owner invite. It creates demo products only when
+`SEED_DEMO=true`.
+
+```bash
+TENANT_CONFIG='{"slug":"acme","businessName":"Acme","ownerEmail":"owner@acme.test","plan":"starter"}' \
+  npx medusa exec ./src/scripts/bootstrap-tenant.ts
+```
+
 <p align="center">
   <a href="https://www.medusajs.com">
   <picture>

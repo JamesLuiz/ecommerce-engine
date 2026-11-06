@@ -1,6 +1,6 @@
-import { loadEnv, defineConfig } from '@medusajs/framework/utils'
+import { defineConfig, loadEnv } from "@medusajs/framework/utils"
 
-loadEnv(process.env.NODE_ENV || 'development', process.cwd())
+loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
 module.exports = defineConfig({
   projectConfig: {
@@ -8,13 +8,15 @@ module.exports = defineConfig({
     databaseDriverOptions: {
       pool: {
         min: 0,
-        max: 5,
+        max: Number(process.env.DB_POOL_MAX ?? 5),
         idleTimeoutMillis: 10000,
         acquireTimeoutMillis: 60000,
       },
       connection: {
-        ssl: false,
-        connectionTimeoutMillis: 60000,
+        ssl:
+          process.env.DB_SSL === "true"
+            ? { rejectUnauthorized: false }
+            : false,
       },
     },
     http: {
@@ -23,6 +25,6 @@ module.exports = defineConfig({
       authCors: process.env.AUTH_CORS!,
       jwtSecret: process.env.JWT_SECRET,
       cookieSecret: process.env.COOKIE_SECRET,
-    }
-  }
+    },
+  },
 })

@@ -1,9 +1,7 @@
 import { HttpTypes } from "@medusajs/types"
 import { NextRequest, NextResponse } from "next/server"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
-const PUBLISHABLE_API_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
-const DEFAULT_REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION || "dk"
+import { getRuntimeConfig } from "@lib/runtime-config"
 
 const regionMapCache = {
   regionMap: new Map<string, HttpTypes.StoreRegion>(),
@@ -12,10 +10,12 @@ const regionMapCache = {
 
 async function getRegionMap(cacheId: string) {
   const { regionMap, regionMapUpdated } = regionMapCache
+  const { backendUrl: BACKEND_URL, publishableKey: PUBLISHABLE_API_KEY } =
+    getRuntimeConfig()
 
-  if (!BACKEND_URL) {
+  if (!BACKEND_URL || !PUBLISHABLE_API_KEY) {
     throw new Error(
-      "Middleware.ts: Error fetching regions. Did you set up regions in your Medusa Admin and define a NEXT_PUBLIC_MEDUSA_BACKEND_URL environment variable."
+      "Middleware.ts: Error fetching regions. Set MEDUSA_BACKEND_URL and MEDUSA_PUBLISHABLE_KEY for this storefront container."
     )
   }
 
@@ -69,14 +69,15 @@ async function getCountryCode(
   request: NextRequest,
   regionMap: Map<string, HttpTypes.StoreRegion | number>
 ) {
+  const { defaultCountryCode } = getRuntimeConfig()
   let countryCode
 
   const urlCountryCode = request.nextUrl.pathname.split("/")[1]?.toLowerCase()
 
   if (urlCountryCode && regionMap.has(urlCountryCode)) {
     countryCode = urlCountryCode
-  } else if (regionMap.has(DEFAULT_REGION)) {
-    countryCode = DEFAULT_REGION
+  } else if (regionMap.has(defaultCountryCode)) {
+    countryCode = defaultCountryCode
   } else if (regionMap.keys().next().value) {
     countryCode = regionMap.keys().next().value
   }
@@ -99,7 +100,7 @@ export async function middleware(request: NextRequest) {
   const countryCode = await getCountryCode(request, regionMap)
 
   // if the country code is available, use it, otherwise use the default region
-  const country = countryCode || DEFAULT_REGION
+  const country = countryCode || getRuntimeConfig().defaultCountryCode
   const firstPathSegment = request.nextUrl.pathname.split("/")[1]?.toLowerCase()
   const urlHasCountry = firstPathSegment === country.toLowerCase()
 
@@ -128,6 +129,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|ucp|buy|_next/static|_next/image|favicon.ico|images|assets|png|svg|jpg|jpeg|gif|webp).*)",
+    "/((?!api|ucp|buy|health|_next/static|_next/image|favicon.ico|images|assets|png|svg|jpg|jpeg|gif|webp).*)",
   ],
 }

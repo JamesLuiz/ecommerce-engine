@@ -4,7 +4,7 @@ import * as Accordion from "@radix-ui/react-accordion"
 import { useEffect, useState } from "react"
 
 import { ChevronDownMini } from "@medusajs/icons"
-import { sdk } from "@lib/config"
+import { useStoreSdk } from "@lib/client-sdk"
 import { HttpTypes } from "@medusajs/types"
 import clsx from "clsx"
 
@@ -17,6 +17,7 @@ const OptionsPicker = ({
   selectedValueIds,
   setOptionValueIds,
 }: OptionsPickerProps) => {
+  const sdk = useStoreSdk()
   const [options, setOptions] = useState<HttpTypes.StoreProductOption[]>([])
   const [openItems, setOpenItems] = useState<string[]>([])
 

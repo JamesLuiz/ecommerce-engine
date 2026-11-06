@@ -2,7 +2,26 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+@layer base {
+  :root {
+    /* Overridden per tenant by the root layout from BRAND_PRIMARY_COLOR. */
+    --brand-primary: #111111;
+  }
+}
+
 @layer utilities {
+  .text-brand {
+    color: var(--brand-primary);
+  }
+
+  .bg-brand {
+    background-color: var(--brand-primary);
+  }
+
+  .border-brand {
+    border-color: var(--brand-primary);
+  }
+
   /* Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none;

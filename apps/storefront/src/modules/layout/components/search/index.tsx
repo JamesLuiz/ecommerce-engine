@@ -13,9 +13,10 @@ import {
   useSearchBox,
 } from "react-instantsearch"
 
+import { useSearchClient } from "@lib/client-sdk"
 import useSearchSettled from "@lib/hooks/use-search-settled"
 import useToggleState from "@lib/hooks/use-toggle-state"
-import { PRODUCT_INDEX_NAME, searchClient } from "@lib/search-client"
+import { PRODUCT_INDEX_NAME } from "@lib/search-client"
 import { Text } from "@modules/common/components/ui"
 import SearchDrawer from "./drawer"
 import SearchHit, { ProductHit } from "./hit"
@@ -118,6 +119,7 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
 const Search = () => {
   const { state: isOpen, open, close } = useToggleState()
   const { countryCode } = useParams<{ countryCode: string }>()
+  const searchClient = useSearchClient()
 
   return (
     <>

@@ -3,7 +3,8 @@
 import type { SearchClient } from "instantsearch.js"
 import { Configure, InstantSearch } from "react-instantsearch"
 
-import { PRODUCT_INDEX_NAME, searchClient } from "@lib/search-client"
+import { useSearchClient } from "@lib/client-sdk"
+import { PRODUCT_INDEX_NAME } from "@lib/search-client"
 import StoreHits from "@modules/store/components/store-hits"
 import StoreRefinements from "@modules/store/components/store-refinements"
 import StoreSearchBox from "@modules/store/components/store-search-box"
@@ -11,6 +12,8 @@ import StoreSearchBox from "@modules/store/components/store-search-box"
 const PRODUCT_LIMIT = 12
 
 const StoreTemplate = ({ currencyCode }: { currencyCode: string }) => {
+  const searchClient = useSearchClient()
+
   return (
     <div className="py-6 content-container" data-testid="category-container">
       <div className="mb-8 text-2xl-semi">

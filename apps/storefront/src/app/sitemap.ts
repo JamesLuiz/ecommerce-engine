@@ -3,6 +3,10 @@ import { listRegions } from "@lib/data/regions"
 import { getSiteOrigin, listCountryCodes } from "@lib/util/site"
 import type { MetadataRoute } from "next"
 
+// Read the backend and the tenant's base URL for every request instead of
+// prerendering one tenant's sitemap into the shared image.
+export const dynamic = "force-dynamic"
+
 const STATIC_PATHS = [
   "",
   "/store",

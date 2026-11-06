@@ -9,15 +9,12 @@ import {
   isMedusaPayments,
   isStripeLike,
 } from "@lib/constants"
+import { useStoreConfig } from "@lib/config-provider"
 
 type PaymentWrapperProps = {
   cart: HttpTypes.StoreCart
   children: React.ReactNode
 }
-
-const stripeKey = process.env.NEXT_PUBLIC_STRIPE_KEY
-const medusaPaymentsKey =
-  process.env.NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY
 
 // loadStripe should only be called once per configuration, so we cache the promises.
 const stripePromises = new Map<string, Promise<Stripe | null>>()
@@ -34,6 +31,10 @@ const getStripePromise = (key: string, stripeAccount?: string) => {
 }
 
 const PaymentWrapper: React.FC<PaymentWrapperProps> = ({ cart, children }) => {
+  const {
+    stripePublishableKey: stripeKey,
+    medusaPaymentsPublishableKey: medusaPaymentsKey,
+  } = useStoreConfig()
   const paymentSession = cart.payment_collection?.payment_sessions?.find(
     (s) => s.status === "pending"
   )

@@ -32,6 +32,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Local env files
 **/.env
 **/.env.local

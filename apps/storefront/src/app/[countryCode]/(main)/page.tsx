@@ -8,8 +8,7 @@ import { toJsonLd } from "@lib/util/product-structured-data"
 import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
 import { buildRegionsReturnPolicies } from "@lib/util/store-policies"
 
-export const dynamic = "force-static"
-export const revalidate = 60
+export const dynamic = "force-dynamic"
 
 export async function generateMetadata(props: {
   params: Promise<{ countryCode: string }>
@@ -18,9 +17,8 @@ export async function generateMetadata(props: {
   const [origin, regions] = await Promise.all([getSiteOrigin(), listRegions()])
 
   return {
-    title: "Medusa Next.js Starter Template",
-    description:
-      "A performant frontend ecommerce starter template with Next.js 16 and Medusa.",
+    title: STORE_NAME,
+    description: `Shop online at ${STORE_NAME}.`,
     alternates: {
       canonical: `${origin}/${countryCode}`,
       languages: {

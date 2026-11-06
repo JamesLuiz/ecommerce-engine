@@ -1,11 +1,13 @@
 import { listCategories } from "@lib/data/categories";
 import { listCollections } from "@lib/data/collections";
+import { getRuntimeConfig } from "@lib/runtime-config";
 import { Text, clx } from "@modules/common/components/ui";
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 import MedusaCTA from "@modules/layout/components/medusa-cta";
 
 export default async function Footer() {
+  const { storeName } = getRuntimeConfig()
   const [{ collections }, productCategories] = await Promise.all([
     listCollections({ fields: "id,handle,title" }),
     listCategories({
@@ -21,9 +23,9 @@ export default async function Footer() {
           <div>
             <LocalizedClientLink
               href="/"
-              className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
+              className="txt-compact-xlarge-plus text-brand hover:text-ui-fg-base uppercase"
             >
-              Medusa Store
+              {storeName}
             </LocalizedClientLink>
           </div>
           <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
@@ -205,7 +207,7 @@ export default async function Footer() {
         </div>
         <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
           <Text className="txt-compact-small">
-            © {new Date().getFullYear()} Medusa Store. All rights reserved.
+            © {new Date().getFullYear()} {storeName}. All rights reserved.
           </Text>
           <MedusaCTA />
         </div>
