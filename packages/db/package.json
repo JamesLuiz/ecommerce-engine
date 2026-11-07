@@ -10,7 +10,6 @@
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
     "build": "tsc -p tsconfig.json",
-    "prepare": "npm run build",
     "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit"
   },
