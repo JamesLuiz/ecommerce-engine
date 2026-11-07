@@ -12,7 +12,11 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/storefront/package.json apps/storefront/package.json
-COPY packages/tenant-config packages/tenant-config
+COPY apps/dashboard/package.json apps/dashboard/package.json
+COPY apps/worker/package.json apps/worker/package.json
+COPY packages/tenant-config/package.json packages/tenant-config/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/provisioner/package.json packages/provisioner/package.json
 RUN npm ci
 
 FROM deps AS builder

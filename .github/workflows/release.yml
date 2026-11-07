@@ -25,6 +25,10 @@ jobs:
             dockerfile: infra/docker/backend.Dockerfile
           - name: storefront
             dockerfile: infra/docker/storefront.Dockerfile
+          - name: dashboard
+            dockerfile: infra/docker/dashboard.Dockerfile
+          - name: worker
+            dockerfile: infra/docker/worker.Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
