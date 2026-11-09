@@ -1,11 +1,35 @@
+"use client"
+
 import { Heading } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { getRuntimeConfig } from "@lib/runtime-config"
-import { getLandingPageConfig } from "@lib/util/site"
+import { useStoreConfig } from "@lib/config-provider"
 
-const Hero = async () => {
-  const { storeName, logoUrl, primaryColor } = getRuntimeConfig()
-  const config = await getLandingPageConfig()
+const emptyHero = {
+  enabled: true,
+  eyebrow: "",
+  title: "Modern essentials",
+  heading: "Designed to feel as good as it looks.",
+  description:
+    "Discover elevated products for everyday rituals, curated with premium quality, practical design, and next-level comfort.",
+  primaryCta: "Shop now",
+  secondaryCta: "Learn more",
+  imageUrl: "",
+}
+
+/**
+ * The homepage hero. Brand colours and content come from the live runtime
+ * config context, so staff can change them in the Medusa admin and the
+ * storefront re-renders immediately via SSE — no reload required.
+ */
+export default function Hero() {
+  const { storeName, logoUrl, primaryColor, settings } = useStoreConfig()
+
+  const hero = settings?.homepage?.hero ?? emptyHero
+  const stats = settings?.homepage?.stats ?? []
+
+  if (!hero.enabled) {
+    return null
+  }
 
   return (
     <section className="relative overflow-hidden border-b border-black/5 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.9),_rgba(245,243,239,0.96)_26%,_rgba(236,231,225,1)_100%)]">
@@ -27,7 +51,7 @@ const Hero = async () => {
               </div>
             )}
             <span className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-600">
-              {config.eyebrow}
+              {hero.eyebrow}
             </span>
           </div>
 
@@ -35,18 +59,18 @@ const Hero = async () => {
             level="h1"
             className="max-w-lg text-5xl font-semibold leading-[0.95] tracking-[-0.06em] text-neutral-900 md:text-6xl"
           >
-            {config.title}
+            {hero.title}
           </Heading>
 
           <Heading
             level="h2"
             className="mt-4 max-w-lg text-3xl font-medium leading-tight tracking-[-0.05em] text-neutral-700 md:text-4xl"
           >
-            {config.heading}
+            {hero.heading}
           </Heading>
 
           <p className="mt-6 max-w-lg text-lg leading-8 text-neutral-600">
-            {config.description}
+            {hero.description}
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -55,31 +79,33 @@ const Hero = async () => {
               className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-medium text-white shadow-lg shadow-black/10 transition-transform duration-200 hover:-translate-y-0.5"
               style={{ backgroundColor: primaryColor }}
             >
-              {config.primaryCta}
+              {hero.primaryCta}
             </LocalizedClientLink>
             <LocalizedClientLink
               href="/store"
               className="inline-flex items-center justify-center rounded-full border border-black/10 bg-white/70 px-6 py-3 text-sm font-medium text-neutral-900 transition-colors duration-200 hover:bg-white"
             >
-              {config.secondaryCta}
+              {hero.secondaryCta}
             </LocalizedClientLink>
           </div>
 
-          <div className="mt-10 grid max-w-md grid-cols-3 gap-4">
-            {config.stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-2xl border border-black/5 bg-white/60 px-3 py-4 backdrop-blur-sm"
-              >
-                <div className="text-xl font-semibold tracking-[-0.04em] text-neutral-900">
-                  {stat.value}
+          {stats.length > 0 && (
+            <div className="mt-10 grid max-w-md grid-cols-3 gap-4">
+              {stats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-2xl border border-black/5 bg-white/60 px-3 py-4 backdrop-blur-sm"
+                >
+                  <div className="text-xl font-semibold tracking-[-0.04em] text-neutral-900">
+                    {stat.value}
+                  </div>
+                  <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-neutral-500">
+                    {stat.label}
+                  </div>
                 </div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-neutral-500">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="relative flex justify-center lg:justify-end">
@@ -92,7 +118,7 @@ const Hero = async () => {
 
             <div className="glass-panel relative overflow-hidden rounded-[32px] p-4">
               <div className="rounded-[28px] bg-neutral-100 p-4">
-                <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-neutral-200 via-white to-neutral-100 p-3">
+                <div className="rounded-[24px] bg-gradient-to-br from-neutral-200 via-white to-neutral-100 p-3">
                   <div className="flex items-center justify-between pb-3 text-[10px] uppercase tracking-[0.2em] text-neutral-500">
                     <span>Featured</span>
                     <span>New drop</span>
@@ -129,5 +155,3 @@ const Hero = async () => {
     </section>
   )
 }
-
-export default Hero

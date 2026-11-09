@@ -6,6 +6,7 @@
  * Any value baked in at build time would leak one tenant's settings into every
  * other tenant's store.
  */
+import type { StorefrontSettings } from "@flowcheq/storefront-config"
 
 export type RuntimeConfig = {
   backendUrl: string
@@ -19,6 +20,7 @@ export type RuntimeConfig = {
   medusaPaymentsPublishableKey?: string
   adyenClientKey?: string
   adyenEnvironment: "test" | "live"
+  settings?: StorefrontSettings
 }
 
 const DEFAULT_BACKEND_URL = "http://localhost:9000"
@@ -84,14 +86,17 @@ export async function hydrateRuntimeBrandConfig(): Promise<RuntimeConfig> {
         primaryColor?: string
         logoUrl?: string
       }
+      settings?: StorefrontSettings
     }
 
     const brand = payload.brand ?? {}
+    const settings = payload.settings
     const hydrated: RuntimeConfig = {
       ...runtime,
       storeName: brand.name || runtime.storeName,
       primaryColor: brand.primaryColor || runtime.primaryColor,
       logoUrl: brand.logoUrl || runtime.logoUrl,
+      settings,
     }
 
     process.env.STORE_NAME = hydrated.storeName

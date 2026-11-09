@@ -1,5 +1,5 @@
 import { ConfigProvider } from "@lib/config-provider"
-import { getRuntimeConfig, hydrateRuntimeBrandConfig } from "@lib/runtime-config"
+import { hydrateRuntimeBrandConfig } from "@lib/runtime-config"
 import { Metadata } from "next"
 import type { CSSProperties } from "react"
 import "styles/globals.css"
@@ -18,11 +18,12 @@ export const metadata: Metadata = {
 }
 
 export default async function RootLayout(props: { children: React.ReactNode }) {
-  const runtime = getRuntimeConfig()
   const hydratedRuntime = await hydrateRuntimeBrandConfig()
-  const brandStyle = {
+  const brandStyle: CSSProperties = {
     "--brand-primary": hydratedRuntime.primaryColor,
-  } as CSSProperties
+    "--brand-accent":
+      hydratedRuntime.settings?.brand?.accentColor ?? hydratedRuntime.primaryColor,
+  }
 
   return (
     <html lang="en" data-mode="light" style={brandStyle}>
@@ -43,6 +44,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
               hydratedRuntime.medusaPaymentsPublishableKey,
             adyenClientKey: hydratedRuntime.adyenClientKey,
             adyenEnvironment: hydratedRuntime.adyenEnvironment,
+            settings: hydratedRuntime.settings,
           }}
         >
           <main className="relative">{props.children}</main>

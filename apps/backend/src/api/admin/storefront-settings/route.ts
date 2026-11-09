@@ -1,6 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
 
+import { storeSettingsHub } from "../../../lib/store-settings-hub"
 import {
   getStorefrontSettings,
   getStorefrontSettingsMetadata,
@@ -50,6 +51,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   await storeModule.updateStores(store.id, {
     metadata,
   })
+
+  storeSettingsHub.publish(store.id, parsed.data)
 
   res.json(getStorefrontSettings({ ...store, metadata }))
 }

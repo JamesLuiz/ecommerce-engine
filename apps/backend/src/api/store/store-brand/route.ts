@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
 
 import { getStoreBrandSettings } from "../../../lib/store-brand"
+import { getStorefrontSettings } from "../../../lib/storefront-settings"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const storeModule = req.scope.resolve(Modules.STORE)
@@ -12,5 +13,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  res.json({ brand: getStoreBrandSettings(store) })
+  res.json({
+    brand: getStoreBrandSettings(store),
+    settings: getStorefrontSettings(store),
+  })
 }
