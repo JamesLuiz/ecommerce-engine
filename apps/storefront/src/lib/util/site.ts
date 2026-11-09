@@ -87,7 +87,7 @@ export async function getLandingPageConfig(): Promise<LandingPageConfig> {
       cache: "no-store",
       headers: {
         ...(runtime.publishableKey
-          ? { "x-medusa-publishable-key": runtime.publishableKey }
+          ? { "x-publishable-api-key": runtime.publishableKey }
           : {}),
       },
     })

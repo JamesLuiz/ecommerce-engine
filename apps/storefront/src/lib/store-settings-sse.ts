@@ -31,7 +31,7 @@ export function connectStoreSettingsSSE(
       headers: {
         Accept: "text/event-stream",
         ...(publishableKey
-          ? { "x-medusa-publishable-key": publishableKey }
+          ? { "x-publishable-api-key": publishableKey }
           : {}),
       },
       signal: controller.signal,

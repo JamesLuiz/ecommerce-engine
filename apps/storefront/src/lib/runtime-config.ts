@@ -71,7 +71,7 @@ export async function hydrateRuntimeBrandConfig(): Promise<RuntimeConfig> {
       headers: {
         Accept: "application/json",
         ...(runtime.publishableKey
-          ? { "x-medusa-publishable-key": runtime.publishableKey }
+          ? { "x-publishable-api-key": runtime.publishableKey }
           : {}),
       },
     })
