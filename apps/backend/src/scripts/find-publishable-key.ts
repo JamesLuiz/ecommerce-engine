@@ -18,7 +18,7 @@ export default async function findPublishableKey({
 
   for (const key of keys) {
     console.log(
-      `api_key: id=${key.id} title=${key.title} type=${key.type} active=${key.is_active} token=${key.token}`
+      `api_key: id=${key.id} title=${key.title} type=${key.type} token=${key.token}`
     )
   }
 

@@ -87,22 +87,31 @@ export async function hydrateRuntimeBrandConfig(): Promise<RuntimeConfig> {
         logoUrl?: string
       }
       settings?: StorefrontSettings
+      hasStorefrontSettings?: boolean
     }
 
     const brand = payload.brand ?? {}
     const settings = payload.settings
+    const hasStorefrontSettings = Boolean(payload.hasStorefrontSettings)
 
-    // The settings payload (metadata.storefront) is the authoritative source
-    // for tenant customisation. Fall back to legacy flat metadata keys, then
-    // env defaults, so a page refresh never resets colours to the env default.
+    // When settings exist in metadata.storefront they are authoritative.
+    // When they don't, fall back to legacy flat metadata keys first so the
+    // schema defaults don't shadow a previously-saved legacy brand color.
     const settingsBrand = settings?.brand ?? {}
     const hydrated: RuntimeConfig = {
       ...runtime,
       storeName:
-        settingsBrand.name || brand.name || runtime.storeName,
+        hasStorefrontSettings && settingsBrand.name
+          ? settingsBrand.name
+          : brand.name || settingsBrand.name || runtime.storeName,
       primaryColor:
-        settingsBrand.primaryColor || brand.primaryColor || runtime.primaryColor,
-      logoUrl: settingsBrand.logoUrl || brand.logoUrl || runtime.logoUrl,
+        hasStorefrontSettings && settingsBrand.primaryColor
+          ? settingsBrand.primaryColor
+          : brand.primaryColor || settingsBrand.primaryColor || runtime.primaryColor,
+      logoUrl:
+        hasStorefrontSettings && settingsBrand.logoUrl
+          ? settingsBrand.logoUrl
+          : brand.logoUrl || settingsBrand.logoUrl || runtime.logoUrl,
       settings,
     }
 

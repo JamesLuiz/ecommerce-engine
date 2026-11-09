@@ -6,6 +6,7 @@ import { listCollections } from "@lib/data/collections"
 import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { toJsonLd } from "@lib/util/product-structured-data"
+import { getRuntimeConfig } from "@lib/runtime-config"
 import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
 import { buildRegionsReturnPolicies } from "@lib/util/store-policies"
 import ProductPreview from "@modules/products/components/product-preview"
@@ -18,9 +19,42 @@ export async function generateMetadata(props: {
   const { countryCode } = await props.params
   const [origin, regions] = await Promise.all([getSiteOrigin(), listRegions()])
 
+  // Resolve the store name from the live settings (metadata.storefront) so
+  // the page title reflects tenant customisation instead of the env default.
+  let storeName = STORE_NAME
+  try {
+    const runtime = getRuntimeConfig()
+    const response = await fetch(
+      `${runtime.backendUrl.replace(/\/$/, "")}/store/store-brand`,
+      {
+        cache: "no-store",
+        headers: {
+          ...(runtime.publishableKey
+            ? { "x-publishable-api-key": runtime.publishableKey }
+            : {}),
+        },
+      }
+    )
+    if (response.ok) {
+      const payload = (await response.json()) as {
+        brand?: { name?: string }
+        settings?: { brand?: { name?: string } }
+        hasStorefrontSettings?: boolean
+      }
+      const settingsBrand = payload.settings?.brand ?? {}
+      const hasSettings = Boolean(payload.hasStorefrontSettings)
+      storeName =
+        hasSettings && settingsBrand.name
+          ? settingsBrand.name
+          : payload.brand?.name || STORE_NAME
+    }
+  } catch {
+    // Keep the env-default title if the backend is unreachable.
+  }
+
   return {
-    title: STORE_NAME,
-    description: `Shop online at ${STORE_NAME}.`,
+    title: storeName,
+    description: `Shop online at ${storeName}.`,
     alternates: {
       canonical: `${origin}/${countryCode}`,
       languages: {

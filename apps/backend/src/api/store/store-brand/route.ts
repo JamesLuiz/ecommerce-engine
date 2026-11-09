@@ -16,5 +16,6 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   res.json({
     brand: getStoreBrandSettings(store),
     settings: getStorefrontSettings(store),
+    hasStorefrontSettings: Boolean(store.metadata?.storefront),
   })
 }
