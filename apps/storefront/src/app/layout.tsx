@@ -19,14 +19,21 @@ export const metadata: Metadata = {
 
 export default async function RootLayout(props: { children: React.ReactNode }) {
   const hydratedRuntime = await hydrateRuntimeBrandConfig()
+  const settings = hydratedRuntime.settings
   const brandStyle: CSSProperties = {
     "--brand-primary": hydratedRuntime.primaryColor,
     "--brand-accent":
-      hydratedRuntime.settings?.brand?.accentColor ?? hydratedRuntime.primaryColor,
+      settings?.brand?.accentColor ?? hydratedRuntime.primaryColor,
   }
 
   return (
-    <html lang="en" data-mode="light" style={brandStyle}>
+    <html
+      lang="en"
+      data-mode={settings?.theme?.mode ?? "light"}
+      data-header-style={settings?.layout?.headerStyle ?? "centered"}
+      data-footer-style={settings?.layout?.footerStyle ?? "compact"}
+      style={brandStyle}
+    >
       <head>
         <link rel="ucp" href="/.well-known/ucp" />
       </head>
