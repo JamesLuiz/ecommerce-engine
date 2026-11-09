@@ -27,4 +27,37 @@ module.exports = defineConfig({
       cookieSecret: process.env.COOKIE_SECRET,
     },
   },
+  modules: [
+    {
+      resolve: "@medusajs/medusa/payment",
+      options: {
+        providers: [
+          {
+            resolve: "./src/providers/payment-paystack",
+            id: "paystack",
+            options: {
+              publicKey:
+                process.env.PAYSTACK_PUBLIC_KEY || "pk_test_local_placeholder",
+              secretKey:
+                process.env.PAYSTACK_SECRET_KEY || "sk_test_local_placeholder",
+              webhookSecret:
+                process.env.PAYSTACK_WEBHOOK_SECRET || "whsec_local_placeholder",
+            },
+          },
+          {
+            resolve: "./src/providers/payment-flutterwave",
+            id: "flutterwave",
+            options: {
+              publicKey:
+                process.env.FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST_local_placeholder",
+              secretKey:
+                process.env.FLUTTERWAVE_SECRET_KEY || "FLWSECK_TEST_local_placeholder",
+              webhookSecret:
+                process.env.FLUTTERWAVE_WEBHOOK_SECRET || "flutterwave_local_placeholder",
+            },
+          },
+        ],
+      },
+    },
+  ],
 })

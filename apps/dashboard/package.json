@@ -4,7 +4,7 @@
   "private": true,
   "description": "Flowcheq Commerce control-plane dashboard (staff area).",
   "scripts": {
-    "dev": "next dev -p 9000",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 9000",
     "staff:create": "node --env-file-if-exists=../../.env --env-file-if-exists=.env scripts/create-staff.mjs",

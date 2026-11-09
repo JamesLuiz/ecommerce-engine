@@ -58,6 +58,7 @@ describe("TenantConfig", () => {
       expect(result.data.brand.primaryColor).toBe("#111111")
       expect(result.data.features.multiVendor).toBe(false)
       expect(result.data.features.paystack).toBe(true)
+      expect(result.data.features.flutterwave).toBe(true)
     }
   })
 

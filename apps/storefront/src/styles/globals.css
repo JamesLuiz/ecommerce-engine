@@ -4,8 +4,38 @@
 
 @layer base {
   :root {
-    /* Overridden per tenant by the root layout from BRAND_PRIMARY_COLOR. */
     --brand-primary: #111111;
+    --brand-primary-soft: rgba(17, 17, 17, 0.08);
+    --brand-surface: #f5f3ef;
+    --brand-surface-strong: #ffffff;
+    --brand-ink: #171717;
+    --brand-ink-muted: #5f5f5f;
+    --brand-line: rgba(17, 17, 17, 0.08);
+    --brand-shadow: 0 22px 60px rgba(17, 17, 17, 0.12);
+    color-scheme: light;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    background: var(--brand-surface);
+  }
+
+  body {
+    @apply bg-[#f5f3ef] text-neutral-900 antialiased;
+    font-family: "SF Pro Display", "Segoe UI", sans-serif;
+  }
+
+  a {
+    @apply transition-colors duration-200 ease-out;
+  }
+
+  img {
+    display: block;
+    max-width: 100%;
+  }
+
+  ::selection {
+    background: rgba(17, 17, 17, 0.12);
   }
 }
 
@@ -20,6 +50,19 @@
 
   .border-brand {
     border-color: var(--brand-primary);
+  }
+
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.74);
+    border: 1px solid rgba(17, 17, 17, 0.06);
+    box-shadow: 0 20px 50px rgba(17, 17, 17, 0.06);
+    backdrop-filter: blur(20px);
+  }
+
+  .soft-card {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(17, 17, 17, 0.06);
+    box-shadow: 0 18px 42px rgba(17, 17, 17, 0.04);
   }
 
   /* Chrome, Safari and Opera */

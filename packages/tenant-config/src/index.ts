@@ -50,9 +50,15 @@ export const TenantConfig = z.object({
     .object({
       multiVendor: z.boolean().default(false),
       paystack: z.boolean().default(true),
+      flutterwave: z.boolean().default(true),
       stripe: z.boolean().default(false),
     })
-    .default({ multiVendor: false, paystack: true, stripe: false }),
+    .default({
+      multiVendor: false,
+      paystack: true,
+      flutterwave: true,
+      stripe: false,
+    }),
   customDomain: z.string().optional(),
 })
 

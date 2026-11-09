@@ -22,6 +22,7 @@
     "test:unit": "TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest --silent --runInBand --forceExit"
   },
   "dependencies": {
+    "@flowcheq/storefront-config": "*",
     "@flowcheq/tenant-config": "*",
     "@medusajs/admin-sdk": "2.22.3",
     "@medusajs/admin-shared": "2.22.3",

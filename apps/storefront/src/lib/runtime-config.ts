@@ -31,10 +31,18 @@ const DEFAULT_COUNTRY_CODE = "us"
  * `next build` cannot fail. Use `requireRuntimeConfig()` where a missing value
  * must be a hard error (server startup / request handling).
  */
+const getEnv = (runtimeKey: string, publicKey?: string) => {
+  return process.env[runtimeKey] || (publicKey ? process.env[publicKey] : undefined)
+}
+
 export function getRuntimeConfig(): RuntimeConfig {
   return {
-    backendUrl: process.env.MEDUSA_BACKEND_URL || DEFAULT_BACKEND_URL,
-    publishableKey: process.env.MEDUSA_PUBLISHABLE_KEY || "",
+    backendUrl:
+      getEnv("MEDUSA_BACKEND_URL", "NEXT_PUBLIC_MEDUSA_BACKEND_URL") ||
+      DEFAULT_BACKEND_URL,
+    publishableKey:
+      getEnv("MEDUSA_PUBLISHABLE_KEY", "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY") ||
+      "",
     storeName: process.env.STORE_NAME || DEFAULT_STORE_NAME,
     primaryColor: process.env.BRAND_PRIMARY_COLOR || DEFAULT_PRIMARY_COLOR,
     logoUrl: process.env.BRAND_LOGO_URL || undefined,
@@ -51,6 +59,55 @@ export function getRuntimeConfig(): RuntimeConfig {
   }
 }
 
+export async function hydrateRuntimeBrandConfig(): Promise<RuntimeConfig> {
+  const runtime = getRuntimeConfig()
+
+  try {
+    const backendUrl = runtime.backendUrl.replace(/\/$/, "")
+    const response = await fetch(`${backendUrl}/store/store-brand`, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        ...(runtime.publishableKey
+          ? { "x-medusa-publishable-key": runtime.publishableKey }
+          : {}),
+      },
+    })
+
+    if (!response.ok) {
+      return runtime
+    }
+
+    const payload = (await response.json()) as {
+      brand?: {
+        name?: string
+        primaryColor?: string
+        logoUrl?: string
+      }
+    }
+
+    const brand = payload.brand ?? {}
+    const hydrated: RuntimeConfig = {
+      ...runtime,
+      storeName: brand.name || runtime.storeName,
+      primaryColor: brand.primaryColor || runtime.primaryColor,
+      logoUrl: brand.logoUrl || runtime.logoUrl,
+    }
+
+    process.env.STORE_NAME = hydrated.storeName
+    process.env.BRAND_PRIMARY_COLOR = hydrated.primaryColor
+    if (hydrated.logoUrl) {
+      process.env.BRAND_LOGO_URL = hydrated.logoUrl
+    } else {
+      delete process.env.BRAND_LOGO_URL
+    }
+
+    return hydrated
+  } catch {
+    return runtime
+  }
+}
+
 /**
  * Strict accessor for request-time and startup validation. Throws a message
  * naming every missing variable instead of failing later with a confusing
@@ -59,10 +116,10 @@ export function getRuntimeConfig(): RuntimeConfig {
 export function requireRuntimeConfig(): RuntimeConfig {
   const missing: string[] = []
 
-  if (!process.env.MEDUSA_BACKEND_URL) {
+  if (!getEnv("MEDUSA_BACKEND_URL", "NEXT_PUBLIC_MEDUSA_BACKEND_URL")) {
     missing.push("MEDUSA_BACKEND_URL")
   }
-  if (!process.env.MEDUSA_PUBLISHABLE_KEY) {
+  if (!getEnv("MEDUSA_PUBLISHABLE_KEY", "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY")) {
     missing.push("MEDUSA_PUBLISHABLE_KEY")
   }
 

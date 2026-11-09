@@ -1,5 +1,5 @@
 import { ConfigProvider } from "@lib/config-provider"
-import { getRuntimeConfig } from "@lib/runtime-config"
+import { getRuntimeConfig, hydrateRuntimeBrandConfig } from "@lib/runtime-config"
 import { Metadata } from "next"
 import type { CSSProperties } from "react"
 import "styles/globals.css"
@@ -17,10 +17,11 @@ export const metadata: Metadata = {
   ),
 }
 
-export default function RootLayout(props: { children: React.ReactNode }) {
+export default async function RootLayout(props: { children: React.ReactNode }) {
   const runtime = getRuntimeConfig()
+  const hydratedRuntime = await hydrateRuntimeBrandConfig()
   const brandStyle = {
-    "--brand-primary": runtime.primaryColor,
+    "--brand-primary": hydratedRuntime.primaryColor,
   } as CSSProperties
 
   return (
@@ -31,17 +32,17 @@ export default function RootLayout(props: { children: React.ReactNode }) {
       <body>
         <ConfigProvider
           config={{
-            backendUrl: runtime.backendUrl,
-            publishableKey: runtime.publishableKey,
-            storeName: runtime.storeName,
-            primaryColor: runtime.primaryColor,
-            logoUrl: runtime.logoUrl,
-            defaultCountryCode: runtime.defaultCountryCode,
-            stripePublishableKey: runtime.stripePublishableKey,
+            backendUrl: hydratedRuntime.backendUrl,
+            publishableKey: hydratedRuntime.publishableKey,
+            storeName: hydratedRuntime.storeName,
+            primaryColor: hydratedRuntime.primaryColor,
+            logoUrl: hydratedRuntime.logoUrl,
+            defaultCountryCode: hydratedRuntime.defaultCountryCode,
+            stripePublishableKey: hydratedRuntime.stripePublishableKey,
             medusaPaymentsPublishableKey:
-              runtime.medusaPaymentsPublishableKey,
-            adyenClientKey: runtime.adyenClientKey,
-            adyenEnvironment: runtime.adyenEnvironment,
+              hydratedRuntime.medusaPaymentsPublishableKey,
+            adyenClientKey: hydratedRuntime.adyenClientKey,
+            adyenEnvironment: hydratedRuntime.adyenEnvironment,
           }}
         >
           <main className="relative">{props.children}</main>

@@ -14,7 +14,7 @@ const base: TenantConfigType = {
   currency: "USD",
   region: "ng",
   brand: { primaryColor: "#111111" },
-  features: { multiVendor: false, paystack: true, stripe: false },
+  features: { multiVendor: false, paystack: true, flutterwave: true, stripe: false },
 }
 
 describe("TenantConfig slug validation", () => {
@@ -49,6 +49,7 @@ describe("TenantConfig", () => {
     expect(parsed.features).toEqual({
       multiVendor: false,
       paystack: true,
+      flutterwave: true,
       stripe: false,
     })
   })
