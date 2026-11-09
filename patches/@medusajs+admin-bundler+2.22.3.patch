@@ -1,12 +1,12 @@
 diff --git a/node_modules/@medusajs/admin-bundler/dist/index.js b/node_modules/@medusajs/admin-bundler/dist/index.js
-index 4373df5..cac5a61 100644
+index 4373df5..69b792f 100644
 --- a/node_modules/@medusajs/admin-bundler/dist/index.js
 +++ b/node_modules/@medusajs/admin-bundler/dist/index.js
 @@ -1298,6 +1298,7 @@ async function writeHTMLFile(outDir) {
      <!DOCTYPE html>
      <html>
          <head>
-+            <title>Flowcheq</title>
++            <title>Flowcheq Commerce</title>
              <meta
                  http-equiv="Content-Type"
                  content="text/html; charset=UTF-8"

@@ -45,8 +45,8 @@ What changes:
   brand name.
 - The Medusa mark on the login, invite and reset-password pages is replaced by
   the brand monogram.
-- The browser tab title is `Page - Flowcheq`, and the initial document title and
-  favicon are branded.
+- The browser tab title is `Page - Flowcheq Commerce`, and the initial document
+  title and favicon are branded.
 - Interactive/primary colours use the brand palette in both light and dark mode.
 
 The patches live in `patches/` and are applied automatically by the root
@@ -60,7 +60,7 @@ environment variables (defaults in parentheses):
 
 | Variable | Default |
 | --- | --- |
-| `ADMIN_BRAND_NAME` | `Flowcheq` |
+| `ADMIN_BRAND_NAME` | `Flowcheq Commerce` |
 | `ADMIN_BRAND_PRIMARY` | `#5B4FF9` |
 | `ADMIN_BRAND_PRIMARY_DARK` | `#8C7CFF` |
 | `ADMIN_BRAND_PRIMARY_HOVER` | `#4A3FE0` |
@@ -70,11 +70,13 @@ environment variables (defaults in parentheses):
 
 The frozen patch stores the concrete values, so changing the brand means:
 
-1. Reinstall the two packages at their pinned versions (`npm install`).
+1. Reverse the current patches to restore the packages:
+   `npx patch-package --reverse`
 2. Set the variables and run `npm run brand:dashboard`.
 3. Regenerate the patches:
    `npx patch-package @medusajs/dashboard @medusajs/admin-bundler`
-4. Rebuild the admin (`npm run build --workspace=@dtc/backend`).
+4. Clear the dev cache (`apps/backend/node_modules/.vite`) and restart the dev
+   server, or rebuild the admin (`npm run build --workspace=@dtc/backend`).
 
 Do this after every upgrade of `@medusajs/dashboard` or
 `@medusajs/admin-bundler`, because the compiled file names and contents change

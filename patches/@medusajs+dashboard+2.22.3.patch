@@ -11,7 +11,7 @@ index b32cffa..f41d424 100644
 +:root{--bg-interactive:#5B4FF9;--border-interactive:#5B4FF9;--fg-interactive:#5B4FF9;--fg-interactive-hover:#4A3FE0;--button-inverted:#5B4FF9;--button-inverted-hover:#4A3FE0;--button-inverted-pressed:#3A31C9}
 +.dark{--bg-interactive:#8C7CFF;--border-interactive:#8C7CFF;--fg-interactive:#8C7CFF;--fg-interactive-hover:#A79BFF;--button-inverted:#8C7CFF;--button-inverted-hover:#A79BFF;--button-inverted-pressed:#6F5FE0}
 diff --git a/node_modules/@medusajs/dashboard/dist/app.js b/node_modules/@medusajs/dashboard/dist/app.js
-index 2c1bd6c..c54ac9b 100644
+index 2c1bd6c..4956f65 100644
 --- a/node_modules/@medusajs/dashboard/dist/app.js
 +++ b/node_modules/@medusajs/dashboard/dist/app.js
 @@ -15560,7 +15560,7 @@ var init_en = __esm({
@@ -19,7 +19,7 @@ index 2c1bd6c..c54ac9b 100644
        login: {
          forgotPassword: "Forgot password? - <0>Reset</0>",
 -        title: "Welcome to Medusa",
-+        title: "Flowcheq",
++        title: "Flowcheq Commerce",
          hint: "Sign in to access the account area",
          mfa: {
            title: "Two-factor authentication",
@@ -28,7 +28,7 @@ index 2c1bd6c..c54ac9b 100644
        },
        invite: {
 -        title: "Welcome to Medusa",
-+        title: "Flowcheq",
++        title: "Flowcheq Commerce",
          hint: "Create your account below",
          backToLogin: "Back to login",
          createAccount: "Create account",
@@ -39,7 +39,7 @@ index 2c1bd6c..c54ac9b 100644
 -        successHint: "Get started with Medusa Admin right away.",
 -        successAction: "Start Medusa Admin",
 +        successHint: "Get started right away.",
-+        successAction: "Start Flowcheq Admin",
++        successAction: "Start Flowcheq Commerce Admin",
          invalidTokenTitle: "Your invite token is invalid",
          invalidTokenHint: "Try requesting a new invite link.",
          passwordMismatch: "Passwords do not match",
@@ -48,7 +48,7 @@ index 2c1bd6c..c54ac9b 100644
            noProviders: "Register an auth provider in your Medusa config to be able to login",
            authenticationFailed: "Authentication failed",
 -          cloud: "Log in with Medusa Cloud",
-+          cloud: "Log in with Flowcheq Cloud",
++          cloud: "Log in with Flowcheq Commerce Cloud",
            continueWithProvider: "Continue with {{provider}}",
            or: "or",
            provisioningFailed: "We couldn't complete your sign in. Please contact an administrator."
@@ -57,7 +57,7 @@ index 2c1bd6c..c54ac9b 100644
        login: {
          forgotPassword: "Forgot password? - <0>Reset</0>",
 -        title: "Welcome to Medusa",
-+        title: "Flowcheq",
++        title: "Flowcheq Commerce",
          hint: "Sign in to access the account area",
          mfa: {
            title: "Two-factor authentication",
@@ -66,7 +66,7 @@ index 2c1bd6c..c54ac9b 100644
        },
        invite: {
 -        title: "Welcome to Medusa",
-+        title: "Flowcheq",
++        title: "Flowcheq Commerce",
          hint: "Create your account below",
          backToLogin: "Back to login",
          createAccount: "Create account",
@@ -77,7 +77,7 @@ index 2c1bd6c..c54ac9b 100644
 -        successHint: "Get started with Medusa Admin right away.",
 -        successAction: "Start Medusa Admin",
 +        successHint: "Get started right away.",
-+        successAction: "Start Flowcheq Admin",
++        successAction: "Start Flowcheq Commerce Admin",
          invalidTokenTitle: "Your invite token is invalid",
          invalidTokenHint: "Try requesting a new invite link.",
          passwordMismatch: "Passwords do not match",
@@ -86,7 +86,7 @@ index 2c1bd6c..c54ac9b 100644
            noProviders: "Register an auth provider in your Medusa config to be able to login",
            authenticationFailed: "Authentication failed",
 -          cloud: "Log in with Medusa Cloud",
-+          cloud: "Log in with Flowcheq Cloud",
++          cloud: "Log in with Flowcheq Commerce Cloud",
            continueWithProvider: "Continue with {{provider}}",
            or: "or",
            provisioningFailed: "We couldn't complete your sign in. Please contact an administrator."
@@ -95,7 +95,7 @@ index 2c1bd6c..c54ac9b 100644
          successTitle: "Uw account is geregistreerd",
          successHint: "Begin meteen met Medusa Admin.",
 -        successAction: "Start Medusa Admin",
-+        successAction: "Start Flowcheq Admin",
++        successAction: "Start Flowcheq Commerce Admin",
          invalidTokenTitle: "Uw uitnodigingstoken is ongeldig",
          invalidTokenHint: "Probeer een nieuwe uitnodigingslink aan te vragen.",
          passwordMismatch: "Wachtwoorden komen niet overeen",
@@ -104,7 +104,7 @@ index 2c1bd6c..c54ac9b 100644
        return DEFAULT_TITLE;
      }
 -    return `${pageTitle} - Medusa`;
-+    return `${pageTitle} - Flowcheq`;
++    return `${pageTitle} - Flowcheq Commerce`;
    }, [matches]);
    return title;
  }
@@ -113,7 +113,7 @@ index 2c1bd6c..c54ac9b 100644
      import_react_router_dom10 = require("react-router-dom");
      import_jsx_runtime28 = require("react/jsx-runtime");
 -    DEFAULT_TITLE = "Medusa";
-+    DEFAULT_TITLE = "Flowcheq";
++    DEFAULT_TITLE = "Flowcheq Commerce";
    }
  });
  
@@ -156,7 +156,7 @@ index 2c1bd6c..c54ac9b 100644
                  )
                }
 diff --git a/node_modules/@medusajs/dashboard/dist/chunk-GBUMG3AT.mjs b/node_modules/@medusajs/dashboard/dist/chunk-GBUMG3AT.mjs
-index e6826b4..161970d 100644
+index e6826b4..77602ff 100644
 --- a/node_modules/@medusajs/dashboard/dist/chunk-GBUMG3AT.mjs
 +++ b/node_modules/@medusajs/dashboard/dist/chunk-GBUMG3AT.mjs
 @@ -15147,7 +15147,7 @@ var en_default = {
@@ -164,7 +164,7 @@ index e6826b4..161970d 100644
    login: {
      forgotPassword: "Forgot password? - <0>Reset</0>",
 -    title: "Welcome to Medusa",
-+    title: "Flowcheq",
++    title: "Flowcheq Commerce",
      hint: "Sign in to access the account area",
      mfa: {
        title: "Two-factor authentication",
@@ -173,7 +173,7 @@ index e6826b4..161970d 100644
    },
    invite: {
 -    title: "Welcome to Medusa",
-+    title: "Flowcheq",
++    title: "Flowcheq Commerce",
      hint: "Create your account below",
      backToLogin: "Back to login",
      createAccount: "Create account",
@@ -184,7 +184,7 @@ index e6826b4..161970d 100644
 -    successHint: "Get started with Medusa Admin right away.",
 -    successAction: "Start Medusa Admin",
 +    successHint: "Get started right away.",
-+    successAction: "Start Flowcheq Admin",
++    successAction: "Start Flowcheq Commerce Admin",
      invalidTokenTitle: "Your invite token is invalid",
      invalidTokenHint: "Try requesting a new invite link.",
      passwordMismatch: "Passwords do not match",
@@ -193,7 +193,7 @@ index e6826b4..161970d 100644
        noProviders: "Register an auth provider in your Medusa config to be able to login",
        authenticationFailed: "Authentication failed",
 -      cloud: "Log in with Medusa Cloud",
-+      cloud: "Log in with Flowcheq Cloud",
++      cloud: "Log in with Flowcheq Commerce Cloud",
        continueWithProvider: "Continue with {{provider}}",
        or: "or",
        provisioningFailed: "We couldn't complete your sign in. Please contact an administrator."
@@ -202,7 +202,7 @@ index e6826b4..161970d 100644
    login: {
      forgotPassword: "Forgot password? - <0>Reset</0>",
 -    title: "Welcome to Medusa",
-+    title: "Flowcheq",
++    title: "Flowcheq Commerce",
      hint: "Sign in to access the account area",
      mfa: {
        title: "Two-factor authentication",
@@ -211,7 +211,7 @@ index e6826b4..161970d 100644
    },
    invite: {
 -    title: "Welcome to Medusa",
-+    title: "Flowcheq",
++    title: "Flowcheq Commerce",
      hint: "Create your account below",
      backToLogin: "Back to login",
      createAccount: "Create account",
@@ -222,7 +222,7 @@ index e6826b4..161970d 100644
 -    successHint: "Get started with Medusa Admin right away.",
 -    successAction: "Start Medusa Admin",
 +    successHint: "Get started right away.",
-+    successAction: "Start Flowcheq Admin",
++    successAction: "Start Flowcheq Commerce Admin",
      invalidTokenTitle: "Your invite token is invalid",
      invalidTokenHint: "Try requesting a new invite link.",
      passwordMismatch: "Passwords do not match",
@@ -231,7 +231,7 @@ index e6826b4..161970d 100644
        noProviders: "Register an auth provider in your Medusa config to be able to login",
        authenticationFailed: "Authentication failed",
 -      cloud: "Log in with Medusa Cloud",
-+      cloud: "Log in with Flowcheq Cloud",
++      cloud: "Log in with Flowcheq Commerce Cloud",
        continueWithProvider: "Continue with {{provider}}",
        or: "or",
        provisioningFailed: "We couldn't complete your sign in. Please contact an administrator."
@@ -240,7 +240,7 @@ index e6826b4..161970d 100644
      successTitle: "Uw account is geregistreerd",
      successHint: "Begin meteen met Medusa Admin.",
 -    successAction: "Start Medusa Admin",
-+    successAction: "Start Flowcheq Admin",
++    successAction: "Start Flowcheq Commerce Admin",
      invalidTokenTitle: "Uw uitnodigingstoken is ongeldig",
      invalidTokenHint: "Probeer een nieuwe uitnodigingslink aan te vragen.",
      passwordMismatch: "Wachtwoorden komen niet overeen",
@@ -249,7 +249,7 @@ index e6826b4..161970d 100644
  import { useMatches as useMatches2 } from "react-router-dom";
  import { jsx as jsx10 } from "react/jsx-runtime";
 -var DEFAULT_TITLE = "Medusa";
-+var DEFAULT_TITLE = "Flowcheq";
++var DEFAULT_TITLE = "Flowcheq Commerce";
  function getTitleFromMatch(match) {
    const handle = match.handle;
    if (handle?.seo) {
@@ -258,7 +258,7 @@ index e6826b4..161970d 100644
        return DEFAULT_TITLE;
      }
 -    return `${pageTitle} - Medusa`;
-+    return `${pageTitle} - Flowcheq`;
++    return `${pageTitle} - Flowcheq Commerce`;
    }, [matches]);
    return title;
  }

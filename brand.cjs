@@ -16,7 +16,7 @@ const fs = require("fs")
 const path = require("path")
 
 const BRAND = {
-  name: process.env.ADMIN_BRAND_NAME || "Flowcheq",
+  name: process.env.ADMIN_BRAND_NAME || "Flowcheq Commerce",
   primary: process.env.ADMIN_BRAND_PRIMARY || "#5B4FF9",
   primaryDark: process.env.ADMIN_BRAND_PRIMARY_DARK || "#8C7CFF",
   primaryHover: process.env.ADMIN_BRAND_PRIMARY_HOVER || "#4A3FE0",
