@@ -1,0 +1,21 @@
+diff --git a/node_modules/@medusajs/admin-bundler/dist/index.js b/node_modules/@medusajs/admin-bundler/dist/index.js
+index 4373df5..cac5a61 100644
+--- a/node_modules/@medusajs/admin-bundler/dist/index.js
++++ b/node_modules/@medusajs/admin-bundler/dist/index.js
+@@ -1298,6 +1298,7 @@ async function writeHTMLFile(outDir) {
+     <!DOCTYPE html>
+     <html>
+         <head>
++            <title>Flowcheq</title>
+             <meta
+                 http-equiv="Content-Type"
+                 content="text/html; charset=UTF-8"
+@@ -1306,7 +1307,7 @@ async function writeHTMLFile(outDir) {
+                 name="viewport"
+                 content="width=device-width, initial-scale=1"
+             />
+-            <link rel="icon" href="data:," data-placeholder-favicon />
++            <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Crect width='400' height='400' rx='88' fill='%235B4FF9'/%3E%3Cpath d='M130 95H275V145H190V185H260V235H190V305H130Z' fill='white'/%3E%3C/svg%3E" data-placeholder-favicon />
+         </head>
+ 
+         <body>

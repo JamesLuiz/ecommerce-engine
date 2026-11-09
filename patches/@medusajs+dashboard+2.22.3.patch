@@ -1,0 +1,310 @@
+diff --git a/node_modules/@medusajs/dashboard/dist/app.css b/node_modules/@medusajs/dashboard/dist/app.css
+index b32cffa..f41d424 100644
+--- a/node_modules/@medusajs/dashboard/dist/app.css
++++ b/node_modules/@medusajs/dashboard/dist/app.css
+@@ -5488,3 +5488,7 @@ button:not(:disabled),
+ .\[\&_tr\]\:hover\:bg-ui-bg-subtle:hover tr {
+   background-color: var(--bg-subtle);
+ }
++
++/* flowcheq-brand */
++:root{--bg-interactive:#5B4FF9;--border-interactive:#5B4FF9;--fg-interactive:#5B4FF9;--fg-interactive-hover:#4A3FE0;--button-inverted:#5B4FF9;--button-inverted-hover:#4A3FE0;--button-inverted-pressed:#3A31C9}
++.dark{--bg-interactive:#8C7CFF;--border-interactive:#8C7CFF;--fg-interactive:#8C7CFF;--fg-interactive-hover:#A79BFF;--button-inverted:#8C7CFF;--button-inverted-hover:#A79BFF;--button-inverted-pressed:#6F5FE0}
+diff --git a/node_modules/@medusajs/dashboard/dist/app.js b/node_modules/@medusajs/dashboard/dist/app.js
+index 2c1bd6c..c54ac9b 100644
+--- a/node_modules/@medusajs/dashboard/dist/app.js
++++ b/node_modules/@medusajs/dashboard/dist/app.js
+@@ -15560,7 +15560,7 @@ var init_en = __esm({
+       },
+       login: {
+         forgotPassword: "Forgot password? - <0>Reset</0>",
+-        title: "Welcome to Medusa",
++        title: "Flowcheq",
+         hint: "Sign in to access the account area",
+         mfa: {
+           title: "Two-factor authentication",
+@@ -15578,7 +15578,7 @@ var init_en = __esm({
+         }
+       },
+       invite: {
+-        title: "Welcome to Medusa",
++        title: "Flowcheq",
+         hint: "Create your account below",
+         backToLogin: "Back to login",
+         createAccount: "Create account",
+@@ -15586,8 +15586,8 @@ var init_en = __esm({
+         emailTooltip: "Your email cannot be changed. If you would like to use another email, a new invite must be sent.",
+         invalidInvite: "The invite is invalid or has expired.",
+         successTitle: "Your account has been registered",
+-        successHint: "Get started with Medusa Admin right away.",
+-        successAction: "Start Medusa Admin",
++        successHint: "Get started right away.",
++        successAction: "Start Flowcheq Admin",
+         invalidTokenTitle: "Your invite token is invalid",
+         invalidTokenHint: "Try requesting a new invite link.",
+         passwordMismatch: "Passwords do not match",
+@@ -16011,7 +16011,7 @@ var init_en = __esm({
+         login: {
+           noProviders: "Register an auth provider in your Medusa config to be able to login",
+           authenticationFailed: "Authentication failed",
+-          cloud: "Log in with Medusa Cloud",
++          cloud: "Log in with Flowcheq Cloud",
+           continueWithProvider: "Continue with {{provider}}",
+           or: "or",
+           provisioningFailed: "We couldn't complete your sign in. Please contact an administrator."
+@@ -19416,7 +19416,7 @@ var init_enGB = __esm({
+       },
+       login: {
+         forgotPassword: "Forgot password? - <0>Reset</0>",
+-        title: "Welcome to Medusa",
++        title: "Flowcheq",
+         hint: "Sign in to access the account area",
+         mfa: {
+           title: "Two-factor authentication",
+@@ -19434,7 +19434,7 @@ var init_enGB = __esm({
+         }
+       },
+       invite: {
+-        title: "Welcome to Medusa",
++        title: "Flowcheq",
+         hint: "Create your account below",
+         backToLogin: "Back to login",
+         createAccount: "Create account",
+@@ -19442,8 +19442,8 @@ var init_enGB = __esm({
+         emailTooltip: "Your email cannot be changed. If you would like to use another email, a new invite must be sent.",
+         invalidInvite: "The invite is invalid or has expired.",
+         successTitle: "Your account has been registered",
+-        successHint: "Get started with Medusa Admin right away.",
+-        successAction: "Start Medusa Admin",
++        successHint: "Get started right away.",
++        successAction: "Start Flowcheq Admin",
+         invalidTokenTitle: "Your invite token is invalid",
+         invalidTokenHint: "Try requesting a new invite link.",
+         passwordMismatch: "Passwords do not match",
+@@ -19867,7 +19867,7 @@ var init_enGB = __esm({
+         login: {
+           noProviders: "Register an auth provider in your Medusa config to be able to login",
+           authenticationFailed: "Authentication failed",
+-          cloud: "Log in with Medusa Cloud",
++          cloud: "Log in with Flowcheq Cloud",
+           continueWithProvider: "Continue with {{provider}}",
+           or: "or",
+           provisioningFailed: "We couldn't complete your sign in. Please contact an administrator."
+@@ -120522,7 +120522,7 @@ var init_nl = __esm({
+         invalidInvite: "De uitnodiging is ongeldig of verlopen.",
+         successTitle: "Uw account is geregistreerd",
+         successHint: "Begin meteen met Medusa Admin.",
+-        successAction: "Start Medusa Admin",
++        successAction: "Start Flowcheq Admin",
+         invalidTokenTitle: "Uw uitnodigingstoken is ongeldig",
+         invalidTokenHint: "Probeer een nieuwe uitnodigingslink aan te vragen.",
+         passwordMismatch: "Wachtwoorden komen niet overeen",
+@@ -144974,7 +144974,7 @@ function useDocumentTitle() {
+     if (!pageTitle) {
+       return DEFAULT_TITLE;
+     }
+-    return `${pageTitle} - Medusa`;
++    return `${pageTitle} - Flowcheq`;
+   }, [matches]);
+   return title;
+ }
+@@ -144991,7 +144991,7 @@ var init_use_document_title = __esm({
+     import_react_helmet_async2 = require("react-helmet-async");
+     import_react_router_dom10 = require("react-router-dom");
+     import_jsx_runtime28 = require("react/jsx-runtime");
+-    DEFAULT_TITLE = "Medusa";
++    DEFAULT_TITLE = "Flowcheq";
+   }
+ });
+ 
+@@ -251886,13 +251886,13 @@ function AvatarBox({ checked }) {
+             fill: "none",
+             xmlns: "http://www.w3.org/2000/svg",
+             children: [
+-              /* @__PURE__ */ (0, import_jsx_runtime864.jsx)("rect", { width: "400", height: "400", fill: "#18181B" }),
++              /* @__PURE__ */ (0, import_jsx_runtime864.jsx)("rect", { width: "400", height: "400", fill: "#5B4FF9" }),
+               /* @__PURE__ */ (0, import_jsx_runtime864.jsx)(
+                 "path",
+                 {
+-                  d: "M238.088 51.1218L238.089 51.1223L310.605 92.8101C334.028 106.308 348.526 131.32 347.868 157.953L347.867 157.966V157.978V241.688C347.867 268.68 333.687 293.362 310.271 306.856L310.269 306.858L237.754 348.878C214.336 362.374 185.643 362.374 162.225 348.878L89.7127 306.859C66.6206 293.361 52.1113 268.674 52.1113 241.688V157.978C52.1113 131.326 66.6211 106.307 89.7088 92.8093C89.7101 92.8085 89.7114 92.8078 89.7127 92.807L162.556 51.1233L162.559 51.1218C185.977 37.6261 214.67 37.6261 238.088 51.1218ZM124.634 200C124.634 241.576 158.502 275.372 200.156 275.372C242.142 275.372 276.013 241.578 276.013 200C276.013 158.419 241.805 124.628 200.156 124.628C158.502 124.628 124.634 158.424 124.634 200Z",
+-                  fill: "url(#paint0_linear_11869_12671)",
+-                  stroke: "url(#paint1_linear_11869_12671)",
++                  d: "M130 95H275V145H190V185H260V235H190V305H130Z",
++                  fill: "#FFFFFF",
++                  stroke: "none",
+                   strokeWidth: "2"
+                 }
+               ),
+@@ -252721,7 +252721,7 @@ var init_logo_box = __esm({
+         "div",
+         {
+           className: (0, import_ui544.clx)(
+-            "relative flex size-14 items-center justify-center rounded-xl bg-ui-button-neutral shadow-buttons-neutral",
++            "relative flex size-14 items-center justify-center rounded-xl bg-ui-button-inverted shadow-buttons-neutral",
+             "after:button-neutral-gradient after:inset-0 after:content-['']",
+             className
+           ),
+@@ -252769,8 +252769,8 @@ var init_logo_box = __esm({
+                 children: /* @__PURE__ */ (0, import_jsx_runtime871.jsx)(
+                   "path",
+                   {
+-                    d: "M30.85 6.16832L22.2453 1.21782C19.4299 -0.405941 15.9801 -0.405941 13.1648 1.21782L4.52043 6.16832C1.74473 7.79208 0 10.802 0 14.0099V23.9505C0 27.198 1.74473 30.1683 4.52043 31.7921L13.1251 36.7822C15.9405 38.4059 19.3903 38.4059 22.2056 36.7822L30.8103 31.7921C33.6257 30.1683 35.3307 27.198 35.3307 23.9505V14.0099C35.41 10.802 33.6653 7.79208 30.85 6.16832ZM17.6852 27.8317C12.8079 27.8317 8.8426 23.8713 8.8426 19C8.8426 14.1287 12.8079 10.1683 17.6852 10.1683C22.5625 10.1683 26.5674 14.1287 26.5674 19C26.5674 23.8713 22.6022 27.8317 17.6852 27.8317Z",
+-                    className: "relative fill-ui-button-inverted drop-shadow-sm"
++                    d: "M12 7H27V12H18V16H25V21H18V31H12Z",
++                    className: "relative", fill: "#FFFFFF"
+                   }
+                 )
+               }
+diff --git a/node_modules/@medusajs/dashboard/dist/chunk-GBUMG3AT.mjs b/node_modules/@medusajs/dashboard/dist/chunk-GBUMG3AT.mjs
+index e6826b4..161970d 100644
+--- a/node_modules/@medusajs/dashboard/dist/chunk-GBUMG3AT.mjs
++++ b/node_modules/@medusajs/dashboard/dist/chunk-GBUMG3AT.mjs
+@@ -15147,7 +15147,7 @@ var en_default = {
+   },
+   login: {
+     forgotPassword: "Forgot password? - <0>Reset</0>",
+-    title: "Welcome to Medusa",
++    title: "Flowcheq",
+     hint: "Sign in to access the account area",
+     mfa: {
+       title: "Two-factor authentication",
+@@ -15165,7 +15165,7 @@ var en_default = {
+     }
+   },
+   invite: {
+-    title: "Welcome to Medusa",
++    title: "Flowcheq",
+     hint: "Create your account below",
+     backToLogin: "Back to login",
+     createAccount: "Create account",
+@@ -15173,8 +15173,8 @@ var en_default = {
+     emailTooltip: "Your email cannot be changed. If you would like to use another email, a new invite must be sent.",
+     invalidInvite: "The invite is invalid or has expired.",
+     successTitle: "Your account has been registered",
+-    successHint: "Get started with Medusa Admin right away.",
+-    successAction: "Start Medusa Admin",
++    successHint: "Get started right away.",
++    successAction: "Start Flowcheq Admin",
+     invalidTokenTitle: "Your invite token is invalid",
+     invalidTokenHint: "Try requesting a new invite link.",
+     passwordMismatch: "Passwords do not match",
+@@ -15598,7 +15598,7 @@ var en_default = {
+     login: {
+       noProviders: "Register an auth provider in your Medusa config to be able to login",
+       authenticationFailed: "Authentication failed",
+-      cloud: "Log in with Medusa Cloud",
++      cloud: "Log in with Flowcheq Cloud",
+       continueWithProvider: "Continue with {{provider}}",
+       or: "or",
+       provisioningFailed: "We couldn't complete your sign in. Please contact an administrator."
+@@ -18998,7 +18998,7 @@ var enGB_default = {
+   },
+   login: {
+     forgotPassword: "Forgot password? - <0>Reset</0>",
+-    title: "Welcome to Medusa",
++    title: "Flowcheq",
+     hint: "Sign in to access the account area",
+     mfa: {
+       title: "Two-factor authentication",
+@@ -19016,7 +19016,7 @@ var enGB_default = {
+     }
+   },
+   invite: {
+-    title: "Welcome to Medusa",
++    title: "Flowcheq",
+     hint: "Create your account below",
+     backToLogin: "Back to login",
+     createAccount: "Create account",
+@@ -19024,8 +19024,8 @@ var enGB_default = {
+     emailTooltip: "Your email cannot be changed. If you would like to use another email, a new invite must be sent.",
+     invalidInvite: "The invite is invalid or has expired.",
+     successTitle: "Your account has been registered",
+-    successHint: "Get started with Medusa Admin right away.",
+-    successAction: "Start Medusa Admin",
++    successHint: "Get started right away.",
++    successAction: "Start Flowcheq Admin",
+     invalidTokenTitle: "Your invite token is invalid",
+     invalidTokenHint: "Try requesting a new invite link.",
+     passwordMismatch: "Passwords do not match",
+@@ -19449,7 +19449,7 @@ var enGB_default = {
+     login: {
+       noProviders: "Register an auth provider in your Medusa config to be able to login",
+       authenticationFailed: "Authentication failed",
+-      cloud: "Log in with Medusa Cloud",
++      cloud: "Log in with Flowcheq Cloud",
+       continueWithProvider: "Continue with {{provider}}",
+       or: "or",
+       provisioningFailed: "We couldn't complete your sign in. Please contact an administrator."
+@@ -119974,7 +119974,7 @@ var nl_default = {
+     invalidInvite: "De uitnodiging is ongeldig of verlopen.",
+     successTitle: "Uw account is geregistreerd",
+     successHint: "Begin meteen met Medusa Admin.",
+-    successAction: "Start Medusa Admin",
++    successAction: "Start Flowcheq Admin",
+     invalidTokenTitle: "Uw uitnodigingstoken is ongeldig",
+     invalidTokenHint: "Probeer een nieuwe uitnodigingslink aan te vragen.",
+     passwordMismatch: "Wachtwoorden komen niet overeen",
+@@ -137349,7 +137349,7 @@ import { useMemo as useMemo6 } from "react";
+ import { Helmet } from "react-helmet-async";
+ import { useMatches as useMatches2 } from "react-router-dom";
+ import { jsx as jsx10 } from "react/jsx-runtime";
+-var DEFAULT_TITLE = "Medusa";
++var DEFAULT_TITLE = "Flowcheq";
+ function getTitleFromMatch(match) {
+   const handle = match.handle;
+   if (handle?.seo) {
+@@ -137395,7 +137395,7 @@ function useDocumentTitle() {
+     if (!pageTitle) {
+       return DEFAULT_TITLE;
+     }
+-    return `${pageTitle} - Medusa`;
++    return `${pageTitle} - Flowcheq`;
+   }, [matches]);
+   return title;
+ }
+diff --git a/node_modules/@medusajs/dashboard/dist/chunk-GXWNZRAD.mjs b/node_modules/@medusajs/dashboard/dist/chunk-GXWNZRAD.mjs
+index 01aaa6d..980b621 100644
+--- a/node_modules/@medusajs/dashboard/dist/chunk-GXWNZRAD.mjs
++++ b/node_modules/@medusajs/dashboard/dist/chunk-GXWNZRAD.mjs
+@@ -61,13 +61,13 @@ function AvatarBox({ checked }) {
+             fill: "none",
+             xmlns: "http://www.w3.org/2000/svg",
+             children: [
+-              /* @__PURE__ */ jsx("rect", { width: "400", height: "400", fill: "#18181B" }),
++              /* @__PURE__ */ jsx("rect", { width: "400", height: "400", fill: "#5B4FF9" }),
+               /* @__PURE__ */ jsx(
+                 "path",
+                 {
+-                  d: "M238.088 51.1218L238.089 51.1223L310.605 92.8101C334.028 106.308 348.526 131.32 347.868 157.953L347.867 157.966V157.978V241.688C347.867 268.68 333.687 293.362 310.271 306.856L310.269 306.858L237.754 348.878C214.336 362.374 185.643 362.374 162.225 348.878L89.7127 306.859C66.6206 293.361 52.1113 268.674 52.1113 241.688V157.978C52.1113 131.326 66.6211 106.307 89.7088 92.8093C89.7101 92.8085 89.7114 92.8078 89.7127 92.807L162.556 51.1233L162.559 51.1218C185.977 37.6261 214.67 37.6261 238.088 51.1218ZM124.634 200C124.634 241.576 158.502 275.372 200.156 275.372C242.142 275.372 276.013 241.578 276.013 200C276.013 158.419 241.805 124.628 200.156 124.628C158.502 124.628 124.634 158.424 124.634 200Z",
+-                  fill: "url(#paint0_linear_11869_12671)",
+-                  stroke: "url(#paint1_linear_11869_12671)",
++                  d: "M130 95H275V145H190V185H260V235H190V305H130Z",
++                  fill: "#FFFFFF",
++                  stroke: "none",
+                   strokeWidth: "2"
+                 }
+               ),
+diff --git a/node_modules/@medusajs/dashboard/dist/reset-password-2YLAKWBP.mjs b/node_modules/@medusajs/dashboard/dist/reset-password-2YLAKWBP.mjs
+index a9fa375..c058def 100644
+--- a/node_modules/@medusajs/dashboard/dist/reset-password-2YLAKWBP.mjs
++++ b/node_modules/@medusajs/dashboard/dist/reset-password-2YLAKWBP.mjs
+@@ -48,7 +48,7 @@ var LogoBox = ({
+     "div",
+     {
+       className: clx(
+-        "relative flex size-14 items-center justify-center rounded-xl bg-ui-button-neutral shadow-buttons-neutral",
++        "relative flex size-14 items-center justify-center rounded-xl bg-ui-button-inverted shadow-buttons-neutral",
+         "after:button-neutral-gradient after:inset-0 after:content-['']",
+         className
+       ),
+@@ -96,8 +96,8 @@ var LogoBox = ({
+             children: /* @__PURE__ */ jsx(
+               "path",
+               {
+-                d: "M30.85 6.16832L22.2453 1.21782C19.4299 -0.405941 15.9801 -0.405941 13.1648 1.21782L4.52043 6.16832C1.74473 7.79208 0 10.802 0 14.0099V23.9505C0 27.198 1.74473 30.1683 4.52043 31.7921L13.1251 36.7822C15.9405 38.4059 19.3903 38.4059 22.2056 36.7822L30.8103 31.7921C33.6257 30.1683 35.3307 27.198 35.3307 23.9505V14.0099C35.41 10.802 33.6653 7.79208 30.85 6.16832ZM17.6852 27.8317C12.8079 27.8317 8.8426 23.8713 8.8426 19C8.8426 14.1287 12.8079 10.1683 17.6852 10.1683C22.5625 10.1683 26.5674 14.1287 26.5674 19C26.5674 23.8713 22.6022 27.8317 17.6852 27.8317Z",
+-                className: "relative fill-ui-button-inverted drop-shadow-sm"
++                d: "M12 7H27V12H18V16H25V21H18V31H12Z",
++                className: "relative", fill: "#FFFFFF"
+               }
+             )
+           }

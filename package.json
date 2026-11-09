@@ -11,6 +11,8 @@
     "start": "turbo start",
     "lint": "turbo lint",
     "test": "turbo test",
+    "postinstall": "patch-package",
+    "brand:dashboard": "node brand.cjs",
     "backend:seed": "turbo seed --filter=@dtc/backend",
     "backend:dev": "turbo dev --filter=@dtc/backend",
     "storefront:dev": "turbo dev --filter=@dtc/storefront"
@@ -28,6 +30,7 @@
     "drizzle-orm": "^0.44.7",
     "eslint": "^9.39.4",
     "jiti": "^2.7.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1",

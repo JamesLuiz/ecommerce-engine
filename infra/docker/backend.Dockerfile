@@ -9,6 +9,9 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json package-lock.json ./
+# Frozen admin rebrand patches; applied by patch-package in the postinstall
+# script. Must be present before `npm ci` runs.
+COPY patches patches
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/storefront/package.json apps/storefront/package.json
 COPY apps/dashboard/package.json apps/dashboard/package.json
