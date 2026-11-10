@@ -51,8 +51,35 @@ const storefrontHeroSchema = z.object({
   imageUrl: z.string().default(""),
 })
 
+/**
+ * The featured product card shown beside the homepage hero. Everything here
+ * used to be hard-coded in the storefront, which meant staff could not change
+ * the "Featured / New drop / Signature edition / Everyday carry" block without
+ * a code deploy.
+ */
+const storefrontShowcaseSchema = z.object({
+  enabled: z.boolean().default(true),
+  label: z.string().default("Featured"),
+  badge: z.string().default("New drop"),
+  eyebrow: z.string().default("Signature edition"),
+  title: z.string().default("Everyday carry"),
+  price: z.string().default("$129"),
+  imageUrl: z.string().default(""),
+  href: z.string().default("/store"),
+})
+
 const homepageSettingsSchema = z.object({
   hero: storefrontHeroSchema,
+  showcase: storefrontShowcaseSchema.default({
+    enabled: true,
+    label: "Featured",
+    badge: "New drop",
+    eyebrow: "Signature edition",
+    title: "Everyday carry",
+    price: "$129",
+    imageUrl: "",
+    href: "/store",
+  }),
   featuredEnabled: z.boolean().default(true),
   stats: z
     .array(
@@ -169,6 +196,16 @@ export const storefrontSettingsSchema = z.object({
       primaryCta: "Shop now",
       secondaryCta: "Learn more",
       imageUrl: "",
+    },
+    showcase: {
+      enabled: true,
+      label: "Featured",
+      badge: "New drop",
+      eyebrow: "Signature edition",
+      title: "Everyday carry",
+      price: "$129",
+      imageUrl: "",
+      href: "/store",
     },
     featuredEnabled: true,
     stats: [],

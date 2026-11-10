@@ -115,14 +115,10 @@ export async function hydrateRuntimeBrandConfig(): Promise<RuntimeConfig> {
       settings,
     }
 
-    process.env.STORE_NAME = hydrated.storeName
-    process.env.BRAND_PRIMARY_COLOR = hydrated.primaryColor
-    if (hydrated.logoUrl) {
-      process.env.BRAND_LOGO_URL = hydrated.logoUrl
-    } else {
-      delete process.env.BRAND_LOGO_URL
-    }
-
+    // Do not mutate process.env here. The storefront is a multi-tenant runtime and
+    // global env state is shared across requests. Persisting backend-driven values
+    // into process.env makes refreshes overwrite the active tenant config and leads
+    // to the “saved settings revert after refresh” bug.
     return hydrated
   } catch {
     return runtime

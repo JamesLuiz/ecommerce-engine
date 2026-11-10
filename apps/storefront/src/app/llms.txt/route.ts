@@ -5,8 +5,8 @@ import { UCP_MCP_PATH, UCP_REST_BASE_PATH } from "@lib/ucp/ucp"
 import {
   getDefaultCountryCode,
   getRequestOrigin,
+  getStoreName,
   listCountryCodes,
-  STORE_NAME,
 } from "@lib/util/site"
 
 export async function GET(request: Request) {
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     ...collections.map((c) => `- [${c.title}](${base}/collections/${c.handle})`),
   ]
 
-  const body = `# ${STORE_NAME}
+  const body = `# ${getStoreName()}
 
 > Online store. Ships to ${countries.length} countries. Prices in ${currencies.join(", ")}.
 

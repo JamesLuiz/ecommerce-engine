@@ -12,7 +12,7 @@ import {
   updateCart,
   updateCheckout,
 } from "./operations"
-import { STORE_NAME } from "@lib/util/site"
+import { getStoreName } from "@lib/util/site"
 import { UcpResult } from "./ucp"
 
 const SUPPORTED_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"]
@@ -204,7 +204,7 @@ export const handleMcpRequest = async (request: Request): Promise<Response> => {
             ? requested
             : SUPPORTED_PROTOCOL_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: `${STORE_NAME} UCP`, version: "1.0.0" },
+        serverInfo: { name: `${getStoreName()} UCP`, version: "1.0.0" },
         instructions:
           "Universal Commerce Protocol shopping tools. Prices are in minor currency units. Checkout hands payment off to the buyer via continue_url.",
       })

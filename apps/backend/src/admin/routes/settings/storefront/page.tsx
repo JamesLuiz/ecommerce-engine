@@ -25,7 +25,9 @@ type CornerRadius = "none" | "sm" | "md" | "lg"
 
 type NavLinkDraft = { label: string; href: string }
 
-type SocialDraft = { platform: string; url: string }
+type SocialPlatform = StorefrontSettings["footer"]["socials"][number]["platform"]
+
+type SocialDraft = { platform: SocialPlatform; url: string }
 
 type LegalDraft = { label: string; href: string }
 
@@ -60,6 +62,16 @@ const emptySettings = (): StorefrontSettings => ({
       primaryCta: "Shop now",
       secondaryCta: "Learn more",
       imageUrl: "",
+    },
+    showcase: {
+      enabled: true,
+      label: "Featured",
+      badge: "New drop",
+      eyebrow: "Signature edition",
+      title: "Everyday carry",
+      price: "$129",
+      imageUrl: "",
+      href: "/store",
     },
     featuredEnabled: true,
     stats: [],
@@ -357,6 +369,7 @@ const HomeSection = ({
   updateHomepage: (patch: Partial<StorefrontSettings["homepage"]>) => void
 }) => {
   const hero = settings.homepage.hero
+  const showcase = settings.homepage.showcase
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -430,6 +443,98 @@ const HomeSection = ({
           id="storefront-hero-image-url"
           value={hero.imageUrl}
           onChange={(event) => updateHomepage({ hero: { ...hero, imageUrl: event.target.value } })}
+        />
+      </div>
+
+      <div style={{ display: "grid", gap: 8 }}>
+        <Text size="small">Featured card</Text>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <Switch
+            checked={showcase.enabled}
+            onCheckedChange={(checked) =>
+              updateHomepage({
+                showcase: { ...showcase, enabled: Boolean(checked) },
+              })
+            }
+          />
+          <Text size="small">Show the featured card beside the hero</Text>
+        </div>
+
+        <Label htmlFor="storefront-showcase-label">Card label</Label>
+        <Input
+          id="storefront-showcase-label"
+          value={showcase.label}
+          onChange={(event) =>
+            updateHomepage({
+              showcase: { ...showcase, label: event.target.value },
+            })
+          }
+        />
+
+        <Label htmlFor="storefront-showcase-badge">Card badge</Label>
+        <Input
+          id="storefront-showcase-badge"
+          value={showcase.badge}
+          onChange={(event) =>
+            updateHomepage({
+              showcase: { ...showcase, badge: event.target.value },
+            })
+          }
+        />
+
+        <Label htmlFor="storefront-showcase-eyebrow">Card eyebrow</Label>
+        <Input
+          id="storefront-showcase-eyebrow"
+          value={showcase.eyebrow}
+          onChange={(event) =>
+            updateHomepage({
+              showcase: { ...showcase, eyebrow: event.target.value },
+            })
+          }
+        />
+
+        <Label htmlFor="storefront-showcase-title">Card title</Label>
+        <Input
+          id="storefront-showcase-title"
+          value={showcase.title}
+          onChange={(event) =>
+            updateHomepage({
+              showcase: { ...showcase, title: event.target.value },
+            })
+          }
+        />
+
+        <Label htmlFor="storefront-showcase-price">Card price</Label>
+        <Input
+          id="storefront-showcase-price"
+          value={showcase.price}
+          onChange={(event) =>
+            updateHomepage({
+              showcase: { ...showcase, price: event.target.value },
+            })
+          }
+        />
+
+        <Label htmlFor="storefront-showcase-image">Card image URL</Label>
+        <Input
+          id="storefront-showcase-image"
+          value={showcase.imageUrl}
+          onChange={(event) =>
+            updateHomepage({
+              showcase: { ...showcase, imageUrl: event.target.value },
+            })
+          }
+        />
+
+        <Label htmlFor="storefront-showcase-href">Card link</Label>
+        <Input
+          id="storefront-showcase-href"
+          value={showcase.href}
+          onChange={(event) =>
+            updateHomepage({
+              showcase: { ...showcase, href: event.target.value },
+            })
+          }
         />
       </div>
 
@@ -779,6 +884,262 @@ const SeoSection = ({
   )
 }
 
+type StorefrontAssetRecord = {
+  id: string
+  url: string
+  filename: string
+  mime_type?: string | null
+  size?: number | null
+  kind?: string | null
+  alt?: string | null
+  created_at?: string | null
+}
+
+/**
+ * Media library backed by the `storefront_asset` table.
+ *
+ * The Medusa File Module keeps bytes in the storage provider and nothing in the
+ * database, so uploads used to disappear from the UI after a refresh. Every
+ * upload now writes a row through the provisioning workflow, and this section
+ * reads those rows back.
+ */
+const MediaLibrarySection = ({
+  settings,
+  updateBrand,
+  updateHomepage,
+  updateSeo,
+}: {
+  settings: StorefrontSettings
+  updateBrand: (patch: Partial<StorefrontSettings["brand"]>) => void
+  updateHomepage: (patch: Partial<StorefrontSettings["homepage"]>) => void
+  updateSeo: (patch: Partial<StorefrontSettings["seo"]>) => void
+}) => {
+  const [assets, setAssets] = useState<StorefrontAssetRecord[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUploading, setIsUploading] = useState(false)
+  const [kind, setKind] = useState("general")
+  const [error, setError] = useState("")
+
+  const loadAssets = async () => {
+    try {
+      const response = await fetch("/admin/storefront-assets", {
+        credentials: "same-origin",
+      })
+
+      if (!response.ok) {
+        throw new Error("Unable to load assets")
+      }
+
+      const payload = (await response.json()) as {
+        assets?: StorefrontAssetRecord[]
+      }
+
+      setAssets(payload.assets ?? [])
+      setError("")
+    } catch {
+      setError("Unable to load uploaded assets.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadAssets()
+  }, [])
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? [])
+
+    if (!files.length) {
+      return
+    }
+
+    setIsUploading(true)
+    setError("")
+
+    try {
+      const formData = new FormData()
+
+      for (const file of files) {
+        formData.append("files", file, file.name)
+      }
+
+      formData.append("kind", kind)
+
+      const response = await fetch("/admin/storefront-assets", {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+      })
+
+      if (!response.ok) {
+        throw new Error("Unable to upload assets")
+      }
+
+      toast.success(files.length > 1 ? "Assets uploaded" : "Asset uploaded")
+      await loadAssets()
+    } catch {
+      setError("Unable to upload the selected files.")
+      toast.error("Unable to upload assets")
+    } finally {
+      setIsUploading(false)
+      event.target.value = ""
+    }
+  }
+
+  const handleDelete = async (asset: StorefrontAssetRecord) => {
+    try {
+      const response = await fetch(`/admin/storefront-assets/${asset.id}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      })
+
+      if (!response.ok) {
+        throw new Error("Unable to delete asset")
+      }
+
+      setAssets((current) => current.filter((item) => item.id !== asset.id))
+      toast.success("Asset deleted")
+    } catch {
+      toast.error("Unable to delete asset")
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gap: 8 }}>
+        <Label htmlFor="storefront-media-kind">Asset type</Label>
+        <Select value={kind} onValueChange={setKind}>
+          <Select.Trigger>
+            <Select.Value placeholder="General" />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="general">General</Select.Item>
+            <Select.Item value="logo">Logo</Select.Item>
+            <Select.Item value="favicon">Favicon</Select.Item>
+            <Select.Item value="hero">Hero image</Select.Item>
+            <Select.Item value="showcase">Featured card image</Select.Item>
+            <Select.Item value="seo">Social image</Select.Item>
+          </Select.Content>
+        </Select>
+
+        <Label htmlFor="storefront-media-upload">Upload files</Label>
+        <Input
+          id="storefront-media-upload"
+          type="file"
+          accept="image/*"
+          multiple
+          disabled={isUploading}
+          onChange={(event) => void handleUpload(event)}
+        />
+        <Text size="small" className="text-ui-fg-subtle">
+          Every upload is written to the database and served from the backend, so
+          it survives restarts and can be reused anywhere on the storefront.
+        </Text>
+      </div>
+
+      {error ? <Text size="small">{error}</Text> : null}
+
+      {isLoading ? (
+        <Text size="small">Loading assets...</Text>
+      ) : assets.length === 0 ? (
+        <Text size="small" className="text-ui-fg-subtle">
+          No uploads yet. Upload a logo, hero image or featured card image above.
+        </Text>
+      ) : (
+        <div style={{ display: "grid", gap: 12 }}>
+          {assets.map((asset) => (
+            <div
+              key={asset.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "96px 1fr auto",
+                gap: 12,
+                alignItems: "center",
+                border: "1px solid var(--border-base)",
+                borderRadius: 8,
+                padding: 12,
+              }}
+            >
+              <img
+                src={asset.url}
+                alt={asset.alt || asset.filename}
+                style={{
+                  width: 96,
+                  height: 72,
+                  objectFit: "cover",
+                  borderRadius: 6,
+                  background: "var(--bg-subtle)",
+                }}
+              />
+              <div style={{ display: "grid", gap: 4 }}>
+                <Text size="small">{asset.filename}</Text>
+                <Text size="small" className="text-ui-fg-subtle">
+                  {asset.kind || "general"}
+                  {asset.mime_type ? ` - ${asset.mime_type}` : ""}
+                </Text>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Button
+                  type="button"
+                  size="small"
+                  variant="secondary"
+                  onClick={() => updateBrand({ logoUrl: asset.url })}
+                >
+                  Logo
+                </Button>
+                <Button
+                  type="button"
+                  size="small"
+                  variant="secondary"
+                  onClick={() =>
+                    updateHomepage({
+                      hero: { ...settings.homepage.hero, imageUrl: asset.url },
+                    })
+                  }
+                >
+                  Hero
+                </Button>
+                <Button
+                  type="button"
+                  size="small"
+                  variant="secondary"
+                  onClick={() =>
+                    updateHomepage({
+                      showcase: {
+                        ...settings.homepage.showcase,
+                        imageUrl: asset.url,
+                      },
+                    })
+                  }
+                >
+                  Featured
+                </Button>
+                <Button
+                  type="button"
+                  size="small"
+                  variant="secondary"
+                  onClick={() => updateSeo({ ogImageUrl: asset.url })}
+                >
+                  Social
+                </Button>
+                <Button
+                  type="button"
+                  size="small"
+                  variant="danger"
+                  onClick={() => void handleDelete(asset)}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const Branding = ({
   settings,
   updateBrand,
@@ -903,6 +1264,7 @@ const StorefrontSettingsPage = () => {
     { value: "home", label: "Home" },
     { value: "navigation", label: "Navigation & features" },
     { value: "footer", label: "Footer & contact" },
+    { value: "media", label: "Media" },
     { value: "seo", label: "SEO" },
   ] as const
 
@@ -961,6 +1323,17 @@ const StorefrontSettingsPage = () => {
           <Tabs.Content value="footer">
             <Container style={{ marginTop: 16, padding: 24 }}>
               <FooterContactSection settings={settings} updateFooter={updateFooter} />
+            </Container>
+          </Tabs.Content>
+
+          <Tabs.Content value="media">
+            <Container style={{ marginTop: 16, padding: 24 }}>
+              <MediaLibrarySection
+                settings={settings}
+                updateBrand={updateBrand}
+                updateHomepage={updateHomepage}
+                updateSeo={updateSeo}
+              />
             </Container>
           </Tabs.Content>
 

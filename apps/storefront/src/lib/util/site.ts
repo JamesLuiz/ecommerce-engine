@@ -1,5 +1,5 @@
 import "server-only"
-import { headers } from "next/headers"
+import { headers } from "next/headers.js"
 
 import { getRuntimeConfig } from "@lib/runtime-config"
 
@@ -18,9 +18,9 @@ export type LandingPageConfig = {
   stats: LandingPageStat[]
 }
 
-export const STORE_NAME = getRuntimeConfig().storeName
+export const getStoreName = () => getRuntimeConfig().storeName
 
-export const DEFAULT_COUNTRY_CODE = getRuntimeConfig().defaultCountryCode
+export const getDefaultCountryCodeValue = () => getRuntimeConfig().defaultCountryCode
 
 const configuredUrl = () => getRuntimeConfig().storeBaseUrl
 
@@ -61,7 +61,8 @@ export const getDefaultCountryCode = (
   regions: { countries?: { iso_2?: string | null }[] | null }[]
 ) => {
   const codes = listCountryCodes(regions)
-  return codes.includes(DEFAULT_COUNTRY_CODE) ? DEFAULT_COUNTRY_CODE : codes[0]
+  const fallback = getDefaultCountryCodeValue()
+  return codes.includes(fallback) ? fallback : codes[0]
 }
 
 export async function getLandingPageConfig(): Promise<LandingPageConfig> {

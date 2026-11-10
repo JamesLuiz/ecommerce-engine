@@ -16,6 +16,17 @@ const emptyHero = {
   imageUrl: "",
 }
 
+const emptyShowcase = {
+  enabled: true,
+  label: "Featured",
+  badge: "New drop",
+  eyebrow: "Signature edition",
+  title: "Everyday carry",
+  price: "$129",
+  imageUrl: "",
+  href: "/store",
+}
+
 /**
  * The homepage hero. Brand colours and content come from the live runtime
  * config context, so staff can change them in the Medusa admin and the
@@ -25,6 +36,7 @@ export default function Hero() {
   const { storeName, logoUrl, primaryColor, settings } = useStoreConfig()
 
   const hero = settings?.homepage?.hero ?? emptyHero
+  const showcase = settings?.homepage?.showcase ?? emptyShowcase
   const stats = settings?.homepage?.stats ?? []
 
   if (!hero.enabled) {
@@ -108,49 +120,66 @@ export default function Hero() {
           )}
         </div>
 
-        <div className="relative flex justify-center lg:justify-end">
-          <div className="relative w-full max-w-[520px]">
-            <div
-              className="absolute -left-5 top-10 h-48 w-48 rounded-full blur-3xl"
-              style={{ backgroundColor: `${primaryColor}22` }}
-            />
-            <div className="absolute -right-6 bottom-8 h-52 w-52 rounded-full bg-neutral-200/80 blur-3xl" />
+        {showcase.enabled && (
+          <div className="relative flex justify-center lg:justify-end">
+            <div className="relative w-full max-w-[520px]">
+              <div
+                className="absolute -left-5 top-10 h-48 w-48 rounded-full blur-3xl"
+                style={{ backgroundColor: `${primaryColor}22` }}
+              />
+              <div className="absolute -right-6 bottom-8 h-52 w-52 rounded-full bg-neutral-200/80 blur-3xl" />
 
-            <div className="glass-panel relative overflow-hidden rounded-[32px] p-4">
-              <div className="rounded-[28px] bg-neutral-100 p-4">
-                <div className="rounded-[24px] bg-gradient-to-br from-neutral-200 via-white to-neutral-100 p-3">
-                  <div className="flex items-center justify-between pb-3 text-[10px] uppercase tracking-[0.2em] text-neutral-500">
-                    <span>Featured</span>
-                    <span>New drop</span>
-                  </div>
+              <LocalizedClientLink
+                href={showcase.href || "/store"}
+                className="glass-panel group relative block overflow-hidden rounded-[32px] p-4 transition-transform duration-300 hover:-translate-y-1"
+              >
+                <div className="rounded-[28px] bg-neutral-100 p-4">
+                  <div className="rounded-[24px] bg-gradient-to-br from-neutral-200 via-white to-neutral-100 p-3">
+                    <div className="flex items-center justify-between pb-3 text-[10px] uppercase tracking-[0.2em] text-neutral-500">
+                      <span>{showcase.label}</span>
+                      <span>{showcase.badge}</span>
+                    </div>
 
-                  <div className="relative h-[440px] overflow-hidden rounded-[22px] bg-gradient-to-br from-white to-stone-200">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.08),_transparent_45%)]" />
-                    <div
-                      className="absolute left-8 top-8 h-28 w-28 rounded-[32px] shadow-[0_30px_60px_rgba(17,17,17,0.1)]"
-                      style={{ backgroundColor: primaryColor }}
-                    />
-                    <div className="absolute bottom-7 left-7 right-7 rounded-[28px] border border-black/5 bg-white/85 p-5 shadow-[0_30px_80px_rgba(17,17,17,0.10)] backdrop-blur-md">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-[0.2em] text-neutral-500">
-                            Signature edition
+                    <div className="relative h-[440px] overflow-hidden rounded-[22px] bg-gradient-to-br from-white to-stone-200">
+                      {showcase.imageUrl ? (
+                        <img
+                          src={showcase.imageUrl}
+                          alt={showcase.title}
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <>
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.08),_transparent_45%)]" />
+                          <div
+                            className="absolute left-8 top-8 h-28 w-28 rounded-[32px] shadow-[0_30px_60px_rgba(17,17,17,0.1)]"
+                            style={{ backgroundColor: primaryColor }}
+                          />
+                        </>
+                      )}
+                      <div className="absolute bottom-7 left-7 right-7 rounded-[28px] border border-black/5 bg-white/85 p-5 shadow-[0_30px_80px_rgba(17,17,17,0.10)] backdrop-blur-md">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-neutral-500">
+                              {showcase.eyebrow}
+                            </div>
+                            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.06em] text-neutral-900">
+                              {showcase.title}
+                            </h2>
                           </div>
-                          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.06em] text-neutral-900">
-                            Everyday carry
-                          </h2>
-                        </div>
-                        <div className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-sm font-medium text-neutral-900">
-                          $129
+                          {showcase.price ? (
+                            <div className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-sm font-medium text-neutral-900">
+                              {showcase.price}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </LocalizedClientLink>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   )

@@ -12,7 +12,7 @@ type StoreLike = {
 export const getStorefrontSettings = (
   store?: StoreLike | null,
   options?: { brandName?: string | null },
-): StorefrontSettings => storefrontSettingsFromMetadata(store?.metadata ?? null, options)
+): StorefrontSettings => storefrontSettingsFromMetadata(store ?? null, options)
 
 export const getStorefrontSettingsMetadata = (
   settings: StorefrontSettings,

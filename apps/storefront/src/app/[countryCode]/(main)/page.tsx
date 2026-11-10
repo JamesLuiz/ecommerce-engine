@@ -7,7 +7,7 @@ import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import { toJsonLd } from "@lib/util/product-structured-data"
 import { getRuntimeConfig } from "@lib/runtime-config"
-import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
+import { getSiteOrigin, getStoreName, listCountryCodes } from "@lib/util/site"
 import { buildRegionsReturnPolicies } from "@lib/util/store-policies"
 import ProductPreview from "@modules/products/components/product-preview"
 
@@ -21,7 +21,7 @@ export async function generateMetadata(props: {
 
   // Resolve the store name from the live settings (metadata.storefront) so
   // the page title reflects tenant customisation instead of the env default.
-  let storeName = STORE_NAME
+  let storeName = getStoreName()
   try {
     const runtime = getRuntimeConfig()
     const response = await fetch(
@@ -46,7 +46,7 @@ export async function generateMetadata(props: {
       storeName =
         hasSettings && settingsBrand.name
           ? settingsBrand.name
-          : payload.brand?.name || STORE_NAME
+          : payload.brand?.name || getStoreName()
     }
   } catch {
     // Keep the env-default title if the backend is unreachable.
@@ -112,11 +112,12 @@ export default async function Home(props: {
   const [origin, regions] = await Promise.all([getSiteOrigin(), listRegions()])
   const homeUrl = `${origin}/${countryCode}`
   const returnPolicies = buildRegionsReturnPolicies(regions)
+  const currentStoreName = getStoreName()
   const structuredData = [
     {
       "@context": "https://schema.org",
       "@type": "Organization",
-      name: STORE_NAME,
+      name: currentStoreName,
       url: origin,
       ...(returnPolicies.length
         ? { hasMerchantReturnPolicy: returnPolicies }
@@ -125,7 +126,7 @@ export default async function Home(props: {
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
-      name: STORE_NAME,
+      name: currentStoreName,
       url: homeUrl,
       potentialAction: {
         "@type": "SearchAction",

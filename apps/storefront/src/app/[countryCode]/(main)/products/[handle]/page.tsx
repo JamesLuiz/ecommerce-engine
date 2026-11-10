@@ -10,7 +10,7 @@ import {
   getPricedVariants,
   toJsonLd,
 } from "@lib/util/product-structured-data"
-import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
+import { getSiteOrigin, getStoreName, listCountryCodes } from "@lib/util/site"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
@@ -42,7 +42,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const description = product.description || product.title
 
   return {
-    title: `${product.title} | ${STORE_NAME}`,
+    title: `${product.title} | ${getStoreName()}`,
     description,
     alternates: {
       canonical: productUrl,
@@ -55,7 +55,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       types: { "text/markdown": `${productUrl}.md` },
     },
     openGraph: {
-      title: `${product.title} | ${STORE_NAME}`,
+      title: `${product.title} | ${getStoreName()}`,
       description,
       url: productUrl,
       images: product.thumbnail ? [product.thumbnail] : [],

@@ -1,13 +1,13 @@
 import { Metadata } from "next"
 
-import { STORE_NAME } from "@lib/util/site"
+import { getStoreName } from "@lib/util/site"
 import { PlaceholderNotice, PolicyPage } from "@modules/policies/templates"
 
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Privacy policy",
-  description: `How ${STORE_NAME} collects and uses personal data.`,
+  description: `How ${getStoreName()} collects and uses personal data.`,
 }
 
 export default function PrivacyPage() {
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     <PolicyPage title="Privacy policy">
       <PlaceholderNotice />
       <p>
-        {STORE_NAME} collects the information you provide at checkout, such as
+        {getStoreName()} collects the information you provide at checkout, such as
         your name, email address and shipping address, to process and deliver
         your order.
       </p>

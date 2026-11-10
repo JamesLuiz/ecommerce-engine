@@ -45,7 +45,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   const metadata = {
     ...(store.metadata ?? {}),
-    storefront: getStorefrontSettingsMetadata(parsed.data),
+    ...getStorefrontSettingsMetadata(parsed.data),
   }
 
   await storeModule.updateStores(store.id, {
