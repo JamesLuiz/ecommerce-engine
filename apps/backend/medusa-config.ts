@@ -151,5 +151,37 @@ module.exports = defineConfig({
         ],
       },
     },
+    {
+      // Campaign + transactional email. The local provider keeps the admin
+      // `feed` channel working; Brevo is added only when a key is present so
+      // the backend still boots before email is configured.
+      resolve: "@medusajs/medusa/notification",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/medusa/notification-local",
+            id: "local",
+            options: {
+              name: "Local Notification Provider",
+              channels: ["feed"],
+            },
+          },
+          ...(process.env.BREVO_API_KEY
+            ? [
+                {
+                  resolve: "./src/providers/notification-brevo",
+                  id: "brevo",
+                  options: {
+                    channels: ["email"],
+                    apiKey: process.env.BREVO_API_KEY,
+                    fromEmail: process.env.BREVO_FROM_EMAIL,
+                    fromName: process.env.BREVO_FROM_NAME,
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+    },
   ],
 })
