@@ -27,6 +27,7 @@ transactionsRouter.post("/transactions/initialize", async (c: Context<VendorEnv>
         email: string
         external_ref: string
         callback_url: string
+        subaccount?: string
       }
     | null
 
@@ -52,11 +53,19 @@ transactionsRouter.post("/transactions/initialize", async (c: Context<VendorEnv>
     )
   }
 
-  const callbackOrigin = new URL(input.callback_url).origin
+  let callbackOrigin: string
+  try {
+    callbackOrigin = new URL(input.callback_url).origin
+  } catch {
+    return c.json(
+      { error: { code: "validation_error", message: "Invalid callback_url format." } },
+      400,
+    )
+  }
 
   if (!vendor.allowed_origins.includes(callbackOrigin)) {
     return c.json(
-      { error: { code: "validation_error", message: "callback_url origin is not allowed." } },
+      { error: { code: "invalid_callback_origin", message: "callback_url origin is not allowed." } },
       400,
     )
   }
@@ -71,10 +80,11 @@ transactionsRouter.post("/transactions/initialize", async (c: Context<VendorEnv>
     currency: input.currency,
     status: "pending",
     customer_email: input.email,
-    channel: "card",
+    channel: null,
     subaccount_code: settlement.subaccount_code,
     metadata: {
       vendor: vendor.slug,
+      vendor_id: vendor.id,
       external_ref: input.external_ref,
       callback_url: input.callback_url,
     },
@@ -108,7 +118,7 @@ transactionsRouter.post("/transactions/initialize", async (c: Context<VendorEnv>
     reference,
     authorization_url: initialized.authorization_url,
     access_code: initialized.access_code,
-  })
+  }, 201)
 })
 
 transactionsRouter.get("/transactions/verify/:reference", async (c: Context<VendorEnv>) => {
@@ -128,20 +138,29 @@ transactionsRouter.get("/transactions/verify/:reference", async (c: Context<Vend
 
   const verified = await client.verify(reference)
 
+  const isMatch =
+    verified.status === "success" &&
+    verified.amount === transaction.amount &&
+    verified.currency.toUpperCase() === transaction.currency.toUpperCase()
+
+  const finalStatus = isMatch ? "success" : "failed"
+
   await updateTransaction(reference, {
-    status: verified.status === "success" ? "success" : "failed",
+    status: finalStatus,
     amount: verified.amount,
     currency: verified.currency,
     paid_at: verified.paid_at ? new Date(verified.paid_at) : null,
-    gateway_response: { verify: verified },
+    channel: verified.channel ?? transaction.channel,
+    gateway_response: { verify: verified, match: isMatch },
   })
 
   return c.json({
     reference,
-    status: verified.status,
+    status: finalStatus,
     amount: verified.amount,
     currency: verified.currency,
     paid_at: verified.paid_at,
+    channel: verified.channel,
   })
 })
 
@@ -175,19 +194,42 @@ transactionsRouter.get("/transactions/:reference", async (c: Context<VendorEnv>)
     return c.json({ error: { code: "not_found", message: "Transaction not found." } }, 404)
   }
 
-  return c.json(transaction)
+  const refundRows = (await db.unsafe<Array<{
+    id: string
+    amount: number
+    status: string
+    reason: string | null
+    created_at: Date
+  }>>(
+    "select id, amount, status, reason, created_at from refunds where reference = $1 and vendor_id = $2 order by created_at desc",
+    [reference, vendor.id],
+  )) as Array<{
+    id: string
+    amount: number
+    status: string
+    reason: string | null
+    created_at: Date
+  }>
+
+  const fees = transaction.fees ?? 0
+  const net = transaction.amount - fees
+
+  return c.json({
+    ...transaction,
+    fees: transaction.fees,
+    net,
+    refunds: refundRows,
+  })
 })
 
 async function findTransactionByReferenceScoped(
   vendorId: string,
   reference: string,
 ): Promise<Transaction | null> {
-  const rows = (await db`
-    select * from transactions
-    where vendor_id = ${vendorId}
-    and reference = ${reference}
-    limit 1
-  `) as Transaction[]
+  const rows = (await db.unsafe<Transaction[]>(
+    "select * from transactions where vendor_id = $1 and reference = $2 limit 1",
+    [vendorId, reference],
+  )) as Transaction[]
 
   const row = rows[0]
 

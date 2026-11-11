@@ -114,7 +114,7 @@ function buildBackendEnv(ctx: ProvisionStepContext, tenantConfig: TenantConfig):
   const dbPort = process.env.TENANT_PG_PORT ?? "5432"
   const { storeUrl, adminUrl } = tenantHosts(ctx.tenant.slug)
 
-  return {
+  const env: Record<string, string> = {
     DATABASE_URL: `postgres://${dbName}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`,
     REDIS_URL: process.env.TENANT_REDIS_URL ?? "redis://localhost:6379",
     JWT_SECRET: jwtSecret,
@@ -127,6 +127,20 @@ function buildBackendEnv(ctx: ProvisionStepContext, tenantConfig: TenantConfig):
     NODE_ENV: "production",
     MEDUSA_ADMIN_BACKEND_URL: adminUrl,
   }
+
+  if (process.env.GATEWAY_URL) {
+    env.GATEWAY_URL = process.env.GATEWAY_URL
+  }
+
+  if (ctx.secrets?.gatewayToken) {
+    env.GATEWAY_TOKEN = ctx.secrets.gatewayToken
+  }
+
+  if (ctx.secrets?.gatewayWebhookSecret) {
+    env.GATEWAY_WEBHOOK_SECRET = ctx.secrets.gatewayWebhookSecret
+  }
+
+  return env
 }
 
 function buildStorefrontEnv(ctx: ProvisionStepContext, tenantConfig: TenantConfig): Record<string, string> {
@@ -182,7 +196,51 @@ export const DEFAULT_STEPS: ProvisionStepDefinition[] = [
       await storeSecret(database, tenantId, "cookie_secret", cookieSecret)
       await storeSecret(database, tenantId, "db_password", dbPassword)
 
-      ctx.secrets = { jwtSecret, cookieSecret, dbPassword }
+      let gatewayToken = await readSecretOrNull(database, tenantId, "gateway_token")
+      let gatewayWebhookSecret = await readSecretOrNull(database, tenantId, "gateway_webhook_secret")
+
+      // Provision vendor in payments gateway if gateway is configured
+      const gatewayUrl = process.env.GATEWAY_URL
+      const adminToken = process.env.PAYMENTS_GATEWAY_ADMIN_TOKEN || process.env.ADMIN_TOKEN
+
+      if (gatewayUrl && adminToken && (!gatewayToken || !gatewayWebhookSecret)) {
+        try {
+          const config = parseTenantConfig(ctx)
+          const { storeUrl, adminUrl } = tenantHosts(ctx.tenant.slug)
+          const webhookUrl = `${adminUrl}/hooks/payment/paystack-gateway_paystack-gateway`
+          const res = await fetch(`${gatewayUrl.replace(/\/+$/, "")}/admin/vendors`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${adminToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              slug: ctx.tenant.slug,
+              name: (config as any)?.brand?.name || ctx.tenant.slug,
+              webhook_url: webhookUrl,
+              allowed_origins: [storeUrl, adminUrl],
+            }),
+          })
+
+          if (res.ok) {
+            const data = (await res.json()) as { token: string; webhook_signing_secret: string }
+            gatewayToken = data.token
+            gatewayWebhookSecret = data.webhook_signing_secret
+            await storeSecret(database, tenantId, "gateway_token", gatewayToken)
+            await storeSecret(database, tenantId, "gateway_webhook_secret", gatewayWebhookSecret)
+          }
+        } catch (err) {
+          console.warn("Failed to register vendor on payments gateway:", err)
+        }
+      }
+
+      ctx.secrets = {
+        jwtSecret,
+        cookieSecret,
+        dbPassword,
+        gatewayToken: gatewayToken || undefined,
+        gatewayWebhookSecret: gatewayWebhookSecret || undefined,
+      }
     },
   },
   {

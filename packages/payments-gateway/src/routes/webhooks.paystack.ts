@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import type { Context } from "hono"
-import { createHash, timingSafeEqual } from "node:crypto"
+import { createHash, createHmac, timingSafeEqual } from "node:crypto"
 import { db } from "../db.js"
 import { webhookForwardQueue } from "../jobs/queue.js"
 import { computeWebhookSignature, vendorSecret } from "../services/crypto.js"
@@ -10,8 +10,16 @@ import type { Transaction } from "../types.js"
 
 type PaystackWebhookPayload = {
   event?: string
-  reference?: string
   data?: {
+    id?: number
+    reference?: string
+    amount?: number
+    currency?: string
+    channel?: string
+    fees?: number
+    paid_at?: string
+    gateway_response?: string
+    status?: string
     metadata?: {
       vendor_id?: string
       vendor?: string
@@ -24,37 +32,28 @@ export const webhooksRouter = new Hono()
 
 webhooksRouter.post("/paystack", async (c: Context) => {
   const rawBody = await c.req.raw.text()
-  const timestamp = c.req.header("x-gateway-timestamp")
-  const signature = c.req.header("x-gateway-signature")
+  const paystackSignature = c.req.header("x-paystack-signature")
 
-  if (!timestamp || !signature) {
+  if (!paystackSignature) {
     return c.json(
-      { error: { code: "invalid_signature", message: "Missing gateway signature headers." } },
+      { error: { code: "invalid_signature", message: "Missing x-paystack-signature header." } },
       401,
     )
   }
 
-  const payload = JSON.parse(rawBody) as PaystackWebhookPayload
+  const paystackSecret = process.env.PAYSTACK_SECRET_KEY ?? ""
+  const expectedPaystackSignature = createHmac("sha512", paystackSecret)
+    .update(rawBody)
+    .digest("hex")
 
-  const vendorId = await resolveVendorId(
-    payload.data?.metadata?.vendor_id ?? "",
-    payload.data?.metadata?.vendor ?? "",
-    payload.data?.metadata?.external_ref ?? "",
-    payload.reference ?? "",
-  )
+  const sigBuffer = Buffer.from(paystackSignature)
+  const expBuffer = Buffer.from(expectedPaystackSignature)
+  const isSignatureValid =
+    sigBuffer.length === expBuffer.length && timingSafeEqual(sigBuffer, expBuffer)
 
-  const secret = vendorSecret(vendorId, process.env.WEBHOOK_SIGNING_ROOT ?? "")
-  const expected = computeWebhookSignature(secret, timestamp, rawBody)
-
-  const signatureBuffer = Buffer.from(signature)
-  const expectedBuffer = Buffer.from(expected)
-  const valid =
-    signatureBuffer.length === expectedBuffer.length &&
-    timingSafeEqual(signatureBuffer, expectedBuffer)
-
-  if (!valid) {
+  if (!isSignatureValid) {
     return c.json(
-      { error: { code: "invalid_signature", message: "Invalid gateway signature." } },
+      { error: { code: "invalid_signature", message: "Invalid Paystack signature." } },
       401,
     )
   }
@@ -63,49 +62,97 @@ webhooksRouter.post("/paystack", async (c: Context) => {
   const existingEvent = await findWebhookEventByDedupeKey(dedupeKey)
 
   if (existingEvent) {
-    return c.json({ status: "ignored" })
+    return c.json({ status: "ignored", reason: "duplicate" }, 200)
   }
 
-  const event = payload.event ?? "charge"
-  const transaction = await findTransactionByReferenceScoped(vendorId, payload.reference ?? "")
+  let payload: PaystackWebhookPayload
+  try {
+    payload = JSON.parse(rawBody) as PaystackWebhookPayload
+  } catch {
+    return c.json({ error: { code: "validation_error", message: "Invalid JSON payload." } }, 400)
+  }
+
+  const event = payload.event ?? ""
+  const reference = payload.data?.reference ?? ""
+  const metadataVendorId = payload.data?.metadata?.vendor_id ?? ""
+  const metadataVendorSlug = payload.data?.metadata?.vendor ?? ""
+  const metadataExternalRef = payload.data?.metadata?.external_ref ?? ""
+
+  const resolvedVendorId = await resolveVendorId(
+    metadataVendorId,
+    metadataVendorSlug,
+    metadataExternalRef,
+    reference,
+  )
+
+  if (!resolvedVendorId) {
+    await insertWebhookEvent({
+      dedupeKey,
+      event,
+      reference: reference || null,
+      vendorId: null,
+      payload,
+      rawBody,
+      status: "ignored",
+    })
+    return c.json({ status: "ignored", reason: "unknown_vendor" }, 200)
+  }
+
+  const transaction = reference
+    ? await findTransactionByReferenceScoped(resolvedVendorId, reference)
+    : null
 
   const eventRow = await insertWebhookEvent({
     dedupeKey,
     event,
-    reference: transaction?.reference ?? payload.reference ?? null,
-    vendorId,
+    reference: transaction?.reference ?? (reference || null),
+    vendorId: resolvedVendorId,
     payload,
     rawBody,
+    status: "received",
   })
 
   if (transaction) {
     await applyWebhookEventToTransaction(transaction, event, payload)
   }
 
-  const vendor = await findVendorById(vendorId)
+  const vendor = await findVendorById(resolvedVendorId)
 
-  await webhookForwardQueue.add("forward", {
-    vendorId,
-    webhookUrl: vendor?.webhook_url ?? "",
-    rawBody,
-    timestamp,
-    signature,
-  })
+  if (vendor?.webhook_url) {
+    const timestamp = String(Math.floor(Date.now() / 1000))
+    const secret = vendorSecret(resolvedVendorId, process.env.WEBHOOK_SIGNING_ROOT ?? "")
+    const forwardSignature = computeWebhookSignature(secret, timestamp, rawBody)
 
-  return c.json({ status: "received", event_id: eventRow?.id ?? null })
+    await webhookForwardQueue.add("forward", {
+      vendorId: resolvedVendorId,
+      webhookUrl: vendor.webhook_url,
+      rawBody,
+      timestamp,
+      signature: forwardSignature,
+    })
+  }
+
+  return c.json({ status: "received", event_id: eventRow?.id ?? null }, 200)
 })
 
 async function applyWebhookEventToTransaction(
   transaction: Transaction,
   event: string,
-  payload: unknown,
+  payload: PaystackWebhookPayload,
 ): Promise<void> {
+  const data = payload.data ?? {}
   const gatewayResponse = { event, payload }
 
-  if (event === "charge.success" && (transaction.status === "pending" || transaction.status === "failed")) {
+  if (
+    event === "charge.success" &&
+    (transaction.status === "pending" || transaction.status === "failed")
+  ) {
     await updateTransaction(transaction.reference, {
       status: "success",
-      paid_at: new Date(),
+      paid_at: data.paid_at ? new Date(data.paid_at) : new Date(),
+      fees: typeof data.fees === "number" ? data.fees : transaction.fees,
+      channel: data.channel ?? transaction.channel,
+      paystack_id: typeof data.id === "number" ? data.id : transaction.paystack_id,
       gateway_response: gatewayResponse,
     })
     return
@@ -135,9 +182,10 @@ async function resolveVendorId(
   vendorSlug: string,
   externalRef: string,
   reference: string,
-): Promise<string> {
+): Promise<string | null> {
   if (vendorId) {
-    return vendorId
+    const vendor = await findVendorById(vendorId)
+    if (vendor) return vendor.id
   }
 
   if (vendorSlug) {
@@ -147,36 +195,30 @@ async function resolveVendorId(
     )) as Array<{ id: string }>
 
     const row = rows[0]
-
-    if (row) {
-      return row.id
-    }
-  }
-
-  const lookups: Array<{ sql: string; value: string }> = []
-
-  if (externalRef) {
-    lookups.push({ sql: "external_ref = $1", value: externalRef })
+    if (row) return row.id
   }
 
   if (reference) {
-    lookups.push({ sql: "reference = $1", value: reference })
-  }
-
-  for (const lookup of lookups) {
     const rows = (await db.unsafe<Array<{ vendor_id: string }>>(
-      `select vendor_id from transactions where ${lookup.sql} limit 1`,
-      [lookup.value],
+      "select vendor_id from transactions where reference = $1 limit 1",
+      [reference],
     )) as Array<{ vendor_id: string }>
 
-    const transaction = rows[0]
-
-    if (transaction) {
-      return transaction.vendor_id
-    }
+    const row = rows[0]
+    if (row) return row.vendor_id
   }
 
-  throw new Error("vendor_not_found")
+  if (externalRef) {
+    const rows = (await db.unsafe<Array<{ vendor_id: string }>>(
+      "select vendor_id from transactions where external_ref = $1 limit 1",
+      [externalRef],
+    )) as Array<{ vendor_id: string }>
+
+    const row = rows[0]
+    if (row) return row.vendor_id
+  }
+
+  return null
 }
 
 async function findWebhookEventByDedupeKey(dedupeKey: string) {
@@ -186,7 +228,6 @@ async function findWebhookEventByDedupeKey(dedupeKey: string) {
   )) as Array<{ id: string }>
 
   const row = rows[0]
-
   return row ?? null
 }
 
@@ -194,13 +235,15 @@ async function insertWebhookEvent(input: {
   dedupeKey: string
   event: string
   reference: string | null
-  vendorId: string
+  vendorId: string | null
   payload: unknown
   rawBody: string
+  status?: "received" | "ignored" | "delivered" | "failed"
 }) {
+  const status = input.status ?? "received"
   const rows = (await db.unsafe<Array<{ id: string }>>(
     `insert into webhook_events (dedupe_key, event, reference, vendor_id, payload, raw_body, status)
-     values ($1, $2, $3, $4, $5::jsonb, $6, 'received')
+     values ($1, $2, $3, $4, $5::jsonb, $6, $7)
      returning id`,
     [
       input.dedupeKey,
@@ -209,11 +252,11 @@ async function insertWebhookEvent(input: {
       input.vendorId,
       JSON.stringify(input.payload),
       input.rawBody,
+      status,
     ],
   )) as Array<{ id: string }>
 
   const row = rows[0]
-
   return row ? { id: row.id } : null
 }
 
@@ -227,6 +270,5 @@ async function findTransactionByReferenceScoped(
   )) as Transaction[]
 
   const row = rows[0]
-
   return row ?? null
 }

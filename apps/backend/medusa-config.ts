@@ -2,18 +2,6 @@ import { defineConfig, loadEnv } from "@medusajs/framework/utils"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
-/**
- * Recover from stale Vite pre-bundled chunks.
- *
- * The admin dev server pre-bundles `@medusajs/dashboard` into hashed files
- * under `node_modules/.vite/deps`. Whenever Vite re-optimizes (a restart, a
- * patched dependency, a newly discovered import) those hashes change, but a
- * browser tab that is already open keeps the old module graph and the next
- * lazy route import fails with "Failed to fetch dynamically imported module".
- *
- * Reloading once when that happens picks up the current hashes. The timestamp
- * guard stops an endless reload loop when a chunk is genuinely unreachable.
- */
 const ADMIN_CHUNK_RECOVERY_SCRIPT = `(function () {
   var KEY = "flowcheq:admin-chunk-reload";
   function reloadOnce() {
@@ -61,15 +49,10 @@ const ADMIN_CHUNK_RECOVERY_SCRIPT = `(function () {
 module.exports = defineConfig({
   admin: {
     vite: () => ({
-      // Keep the dependency graph stable for the whole session: wait for the
-      // initial crawl before finalizing pre-bundles instead of re-optimizing
-      // mid-navigation.
       optimizeDeps: {
         holdUntilCrawlEnd: true,
       },
       server: {
-        // Pre-transform the generated admin entry at startup so the first
-        // navigation does not discover new deps and trigger a re-optimize.
         warmup: {
           clientFiles: ["./entry.jsx"],
         },
@@ -121,9 +104,21 @@ module.exports = defineConfig({
       resolve: "./src/modules/storefront-asset",
     },
     {
+      resolve: "./src/modules/vendor-payment",
+    },
+    {
       resolve: "@medusajs/medusa/payment",
       options: {
         providers: [
+          {
+            resolve: "./src/modules/paystack-gateway",
+            id: "paystack-gateway",
+            options: {
+              gatewayUrl: process.env.GATEWAY_URL,
+              gatewayToken: process.env.GATEWAY_TOKEN,
+              webhookSecret: process.env.GATEWAY_WEBHOOK_SECRET,
+            },
+          },
           {
             resolve: "./src/providers/payment-paystack",
             id: "paystack",
@@ -152,9 +147,6 @@ module.exports = defineConfig({
       },
     },
     {
-      // Campaign + transactional email. The local provider keeps the admin
-      // `feed` channel working; Brevo is added only when a key is present so
-      // the backend still boots before email is configured.
       resolve: "@medusajs/medusa/notification",
       options: {
         providers: [
