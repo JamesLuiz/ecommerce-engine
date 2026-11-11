@@ -11,7 +11,7 @@ index b32cffa..f41d424 100644
 +:root{--bg-interactive:#5B4FF9;--border-interactive:#5B4FF9;--fg-interactive:#5B4FF9;--fg-interactive-hover:#4A3FE0;--button-inverted:#5B4FF9;--button-inverted-hover:#4A3FE0;--button-inverted-pressed:#3A31C9}
 +.dark{--bg-interactive:#8C7CFF;--border-interactive:#8C7CFF;--fg-interactive:#8C7CFF;--fg-interactive-hover:#A79BFF;--button-inverted:#8C7CFF;--button-inverted-hover:#A79BFF;--button-inverted-pressed:#6F5FE0}
 diff --git a/node_modules/@medusajs/dashboard/dist/app.js b/node_modules/@medusajs/dashboard/dist/app.js
-index 2c1bd6c..4956f65 100644
+index 2c1bd6c..4dfc52a 100644
 --- a/node_modules/@medusajs/dashboard/dist/app.js
 +++ b/node_modules/@medusajs/dashboard/dist/app.js
 @@ -15560,7 +15560,7 @@ var init_en = __esm({
@@ -117,7 +117,24 @@ index 2c1bd6c..4956f65 100644
    }
  });
  
-@@ -251886,13 +251886,13 @@ function AvatarBox({ checked }) {
+@@ -145986,15 +145986,7 @@ var init_user_menu = __esm({
+               /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_icons15.User, { className: "me-2 text-ui-fg-subtle" }),
+               t5("app.menus.user.profileSettings")
+             ] }) }),
+-            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_ui22.DropdownMenu.Separator, {}),
+-            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_ui22.DropdownMenu.Item, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_react_router_dom13.Link, { to: "https://docs.medusajs.com", target: "_blank", children: [
+-              /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_icons15.BookOpen, { className: "me-2 text-ui-fg-subtle" }),
+-              t5("app.menus.user.documentation")
+-            ] }) }),
+-            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_ui22.DropdownMenu.Item, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_react_router_dom13.Link, { to: "https://medusajs.com/changelog/", target: "_blank", children: [
+-              /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_icons15.TimelineVertical, { className: "me-2 text-ui-fg-subtle" }),
+-              t5("app.menus.user.changelog")
+-            ] }) }),
++
+             /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_ui22.DropdownMenu.Separator, {}),
+             /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_ui22.DropdownMenu.Item, { onClick: toggleModal, children: [
+               /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_icons15.Keyboard, { className: "me-2 text-ui-fg-subtle" }),
+@@ -251886,13 +251878,13 @@ function AvatarBox({ checked }) {
              fill: "none",
              xmlns: "http://www.w3.org/2000/svg",
              children: [
@@ -135,7 +152,7 @@ index 2c1bd6c..4956f65 100644
                    strokeWidth: "2"
                  }
                ),
-@@ -252721,7 +252721,7 @@ var init_logo_box = __esm({
+@@ -252721,7 +252713,7 @@ var init_logo_box = __esm({
          "div",
          {
            className: (0, import_ui544.clx)(
@@ -144,7 +161,7 @@ index 2c1bd6c..4956f65 100644
              "after:button-neutral-gradient after:inset-0 after:content-['']",
              className
            ),
-@@ -252769,8 +252769,8 @@ var init_logo_box = __esm({
+@@ -252769,8 +252761,8 @@ var init_logo_box = __esm({
                  children: /* @__PURE__ */ (0, import_jsx_runtime871.jsx)(
                    "path",
                    {

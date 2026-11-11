@@ -36,6 +36,20 @@ const FAVICON = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
   BRAND.primary
 )}'/%3E%3Cpath d='${LOGO_PATH_400}' fill='white'/%3E%3C/svg%3E`
 
+// The account dropdown ships "Documentation" and "Changelog" links to Medusa's
+// own sites. Flowcheq vendors should not be sent to Medusa docs, so the two
+// items (and the separator that precedes them) are removed from the compiled
+// dashboard. Re-extract this block from app.js after a dashboard upgrade.
+const USER_MENU_MEDUSA_LINKS = `            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_ui22.DropdownMenu.Separator, {}),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_ui22.DropdownMenu.Item, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_react_router_dom13.Link, { to: "https://docs.medusajs.com", target: "_blank", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_icons15.BookOpen, { className: "me-2 text-ui-fg-subtle" }),
+              t5("app.menus.user.documentation")
+            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_ui22.DropdownMenu.Item, { asChild: true, children: /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_react_router_dom13.Link, { to: "https://medusajs.com/changelog/", target: "_blank", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(import_icons15.TimelineVertical, { className: "me-2 text-ui-fg-subtle" }),
+              t5("app.menus.user.changelog")
+            ] }) }),`
+
 const DASHBOARD_DIR = path.join(
   __dirname,
   "node_modules",
@@ -124,6 +138,9 @@ const patchDashboard = () => {
         'className: "relative", fill: "#FFFFFF"',
       ],
     ])
+
+    // Remove Medusa's own documentation/changelog links from the account menu.
+    swap(filePath, [[USER_MENU_MEDUSA_LINKS, ""]])
   }
 
   const appCss = path.join(DASHBOARD_DIR, "app.css")
