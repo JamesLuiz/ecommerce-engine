@@ -1,0 +1,31 @@
+{
+  "name": "@flowcheq/payments-gateway",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Central Flowcheq payments gateway that routes per-vendor Medusa payment traffic to Paystack",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.7",
+    "bullmq": "^6.7.4",
+    "hono": "^4.13.18",
+    "ioredis": "^6.0.0",
+    "pino": "^10.4.0",
+    "postgres": "^3.4.9",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "eslint": "^9.39.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^2.1.8"
+  }
+}
