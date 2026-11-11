@@ -17,6 +17,10 @@ mirrors the specification under `src/`.
 4. **Webhook forward**: BullMQ queue `gateway-webhook-forward`, single Paystack webhook URL
    at `/webhooks/paystack`. Retries with exponential backoff; dedupe on sha256 of raw body.
 5. **Refund**: behind the `REFUNDS_ENABLED` flag (default `false`).
+6. **Reconciliation**: a repeatable BullMQ worker (`gateway-reconcile-transactions`, every
+   5 minutes) verifies stale pending transactions and abandons ones older than 24 hours.
+7. **Partial updates**: `updateTransaction` only writes the columns present in the patch, so
+   webhook updates never wipe captured fees or amounts.
 
 ## Out of scope (until confirmed with Paystack)
 

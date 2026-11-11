@@ -101,31 +101,42 @@ export const updateTransaction = async (
   reference: string,
   patch: Partial<TransactionRow>,
 ): Promise<Transaction | null> => {
+  const columns = [
+    "status",
+    "amount",
+    "currency",
+    "fees",
+    "paid_at",
+    "channel",
+    "gateway_response",
+    "paystack_id",
+  ] as const
+
+  const sets: string[] = ["updated_at = now()"]
+  const params: Array<string | number | Date | null> = [reference]
+  let index = 2
+
+  for (const column of columns) {
+    const value = patch[column]
+
+    if (value === undefined) {
+      continue
+    }
+
+    if (column === "gateway_response") {
+      sets.push(`${column} = $${index}`)
+      params.push(value ? JSON.stringify(value) : null)
+    } else {
+      sets.push(`${column} = $${index}`)
+      params.push(value as string | number | Date | null)
+    }
+
+    index += 1
+  }
+
   const rows = (await db.unsafe<TransactionRow[]>(
-    `update transactions
-     set
-       status = $2,
-       amount = $3,
-       currency = $4,
-       fees = $5,
-       paid_at = $6,
-       channel = $7,
-       gateway_response = $8,
-       paystack_id = $9,
-       updated_at = now()
-     where reference = $1
-     returning *`,
-    [
-      reference,
-      patch.status ?? "pending",
-      patch.amount ?? 0,
-      patch.currency ?? "NGN",
-      patch.fees ?? null,
-      patch.paid_at ?? null,
-      patch.channel ?? null,
-      patch.gateway_response ? JSON.stringify(patch.gateway_response) : null,
-      patch.paystack_id ?? null,
-    ],
+    `update transactions set ${sets.join(", ")} where reference = $1 returning *`,
+    params,
   )) as TransactionRow[]
 
   const row = rows[0]

@@ -2,7 +2,10 @@ import { Hono } from "hono"
 import type { Context } from "hono"
 import { createHash, timingSafeEqual } from "node:crypto"
 import { db } from "../db.js"
+import { webhookForwardQueue } from "../jobs/queue.js"
 import { computeWebhookSignature, vendorSecret } from "../services/crypto.js"
+import { updateTransaction } from "../services/transactions.js"
+import { findVendorById } from "../services/vendors.js"
 import type { Transaction } from "../types.js"
 
 type PaystackWebhookPayload = {
@@ -63,19 +66,69 @@ webhooksRouter.post("/paystack", async (c: Context) => {
     return c.json({ status: "ignored" })
   }
 
+  const event = payload.event ?? "charge"
   const transaction = await findTransactionByReferenceScoped(vendorId, payload.reference ?? "")
 
   const eventRow = await insertWebhookEvent({
     dedupeKey,
-    event: payload.event ?? "charge",
+    event,
     reference: transaction?.reference ?? payload.reference ?? null,
     vendorId,
     payload,
     rawBody,
   })
 
+  if (transaction) {
+    await applyWebhookEventToTransaction(transaction, event, payload)
+  }
+
+  const vendor = await findVendorById(vendorId)
+
+  await webhookForwardQueue.add("forward", {
+    vendorId,
+    webhookUrl: vendor?.webhook_url ?? "",
+    rawBody,
+    timestamp,
+    signature,
+  })
+
   return c.json({ status: "received", event_id: eventRow?.id ?? null })
 })
+
+async function applyWebhookEventToTransaction(
+  transaction: Transaction,
+  event: string,
+  payload: unknown,
+): Promise<void> {
+  const gatewayResponse = { event, payload }
+
+  if (event === "charge.success" && (transaction.status === "pending" || transaction.status === "failed")) {
+    await updateTransaction(transaction.reference, {
+      status: "success",
+      paid_at: new Date(),
+      gateway_response: gatewayResponse,
+    })
+    return
+  }
+
+  if (event === "charge.failed" && transaction.status === "pending") {
+    await updateTransaction(transaction.reference, {
+      status: "failed",
+      gateway_response: gatewayResponse,
+    })
+    return
+  }
+
+  if (
+    event === "refund.processed" &&
+    (transaction.status === "success" || transaction.status === "partially_refunded")
+  ) {
+    await updateTransaction(transaction.reference, {
+      status: "refunded",
+      gateway_response: gatewayResponse,
+    })
+  }
+}
 
 async function resolveVendorId(
   vendorId: string,
@@ -88,11 +141,10 @@ async function resolveVendorId(
   }
 
   if (vendorSlug) {
-    const rows = (await db`
-      select id from vendors
-      where slug = ${vendorSlug}
-      limit 1
-    `) as Array<{ id: string }>
+    const rows = (await db.unsafe<Array<{ id: string }>>(
+      "select id from vendors where slug = $1 limit 1",
+      [vendorSlug],
+    )) as Array<{ id: string }>
 
     const row = rows[0]
 
@@ -113,7 +165,7 @@ async function resolveVendorId(
 
   for (const lookup of lookups) {
     const rows = (await db.unsafe<Array<{ vendor_id: string }>>(
-      `select vendor_id from transactions where ${lookup.sql}`,
+      `select vendor_id from transactions where ${lookup.sql} limit 1`,
       [lookup.value],
     )) as Array<{ vendor_id: string }>
 
@@ -128,11 +180,10 @@ async function resolveVendorId(
 }
 
 async function findWebhookEventByDedupeKey(dedupeKey: string) {
-  const rows = (await db`
-    select * from webhook_events
-    where dedupe_key = ${dedupeKey}
-    limit 1
-  `) as Array<{ id: string }>
+  const rows = (await db.unsafe<Array<{ id: string }>>(
+    "select * from webhook_events where dedupe_key = $1 limit 1",
+    [dedupeKey],
+  )) as Array<{ id: string }>
 
   const row = rows[0]
 
@@ -147,19 +198,19 @@ async function insertWebhookEvent(input: {
   payload: unknown
   rawBody: string
 }) {
-  const rows = (await db`
-    insert into webhook_events (dedupe_key, event, reference, vendor_id, payload, raw_body, status)
-    values (
-      ${input.dedupeKey},
-      ${input.event},
-      ${input.reference},
-      ${input.vendorId},
-      ${JSON.stringify(input.payload)}::jsonb,
-      ${input.rawBody},
-      'received'
-    )
-    returning id
-  `) as Array<{ id: string }>
+  const rows = (await db.unsafe<Array<{ id: string }>>(
+    `insert into webhook_events (dedupe_key, event, reference, vendor_id, payload, raw_body, status)
+     values ($1, $2, $3, $4, $5::jsonb, $6, 'received')
+     returning id`,
+    [
+      input.dedupeKey,
+      input.event,
+      input.reference,
+      input.vendorId,
+      JSON.stringify(input.payload),
+      input.rawBody,
+    ],
+  )) as Array<{ id: string }>
 
   const row = rows[0]
 
@@ -170,12 +221,10 @@ async function findTransactionByReferenceScoped(
   vendorId: string,
   reference: string,
 ): Promise<Transaction | null> {
-  const rows = (await db`
-    select * from transactions
-    where vendor_id = ${vendorId}
-    and reference = ${reference}
-    limit 1
-  `) as Transaction[]
+  const rows = (await db.unsafe<Transaction[]>(
+    "select * from transactions where vendor_id = $1 and reference = $2 limit 1",
+    [vendorId, reference],
+  )) as Transaction[]
 
   const row = rows[0]
 
