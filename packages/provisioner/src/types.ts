@@ -36,6 +36,8 @@ export interface ProvisionSecrets {
   jwtSecret?: string
   cookieSecret?: string
   dbPassword?: string
+  gatewayToken?: string
+  gatewayWebhookSecret?: string
 }
 
 export interface ProvisionBootstrap {
