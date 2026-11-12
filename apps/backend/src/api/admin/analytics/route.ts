@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { z } from "@medusajs/framework/zod"
+import { getOrdersListWorkflow } from "@medusajs/core-flows"
 
 import {
   buildAnalytics,
@@ -44,7 +45,6 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const range: AnalyticsRange = parsed.data.range
-  const orderService = req.scope.resolve(Modules.ORDER)
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
   const window = resolveAnalyticsWindow(range, parsed.data.granularity)
@@ -52,30 +52,24 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const filters = {
     is_draft_order: false,
     status: { $ne: "canceled" },
-    created_at: window.from
-      ? { $gte: window.from, $lte: window.to }
-      : { $lte: window.to },
-  } as unknown as Parameters<typeof orderService.listOrders>[0]
+    created_at: window.from ? { $gte: window.from, $lte: window.to } : { $lte: window.to },
+  }
 
   const orders: AnalyticsOrder[] = []
   let truncated = false
   let skip = 0
 
   while (true) {
-    const page = (await orderService.listOrders(filters, {
-      select: [
-        "id",
-        "created_at",
-        "status",
-        "currency_code",
-        "total",
-        "*items",
-        "*items.detail",
-      ],
-      take: ORDER_PAGE_SIZE,
-      skip,
-      order: { created_at: "ASC" },
-    })) as unknown as AnalyticsOrder[]
+    const { result } = await getOrdersListWorkflow(req.scope).run({
+      input: {
+        fields: ["id", "created_at", "status", "currency_code", "total"],
+        variables: { filters, skip, take: ORDER_PAGE_SIZE },
+      },
+    })
+
+    const page: AnalyticsOrder[] =
+      ((result as { rows?: AnalyticsOrder[] })?.rows ??
+        (result as AnalyticsOrder[])) as AnalyticsOrder[]
 
     orders.push(...page)
 
