@@ -158,6 +158,8 @@ export class PaystackClient {
     reference: string
     callback_url: string
     subaccount: string
+    vendor_id: string
+    external_ref: string
   }): Promise<PaystackInitializeResponse> {
     const data = await this.request<PaystackInitializeResponse>(
       "/transaction/initialize",
@@ -174,6 +176,11 @@ export class PaystackClient {
           metadata: {
             gateway: "flowcheq",
             callback_source: "medusa",
+            // Paystack echoes metadata back on charge.* webhooks. `external_ref`
+            // is the Medusa payment session id, which the vendor instance needs
+            // to attach the event to the right session.
+            vendor_id: input.vendor_id,
+            external_ref: input.external_ref,
           },
         }),
       },

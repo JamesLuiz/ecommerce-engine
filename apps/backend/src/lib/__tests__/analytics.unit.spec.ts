@@ -268,6 +268,20 @@ describe("buildAnalytics", () => {
       "2026-11",
       "2026-12",
     ])
+    expect(result.effectiveFrom).toBe("2026-11-01T00:00:00.000Z")
+  })
+
+  it("never reports an epoch start for an empty open ended window", () => {
+    const result = buildAnalytics({
+      orders: [],
+      stockItems: [],
+      from: null,
+      to: new Date("2026-11-12T06:33:49.315Z"),
+      granularity: "month",
+    })
+
+    expect(result.series.map((bucket) => bucket.key)).toEqual(["2026-11"])
+    expect(result.effectiveFrom).toBe("2026-11-01T00:00:00.000Z")
   })
 })
 

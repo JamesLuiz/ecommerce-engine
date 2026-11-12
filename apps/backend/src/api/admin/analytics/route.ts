@@ -154,7 +154,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   res.json({
     range: {
       preset: range,
-      from: (window.from ?? new Date(0)).toISOString(),
+      from: analytics.effectiveFrom,
       to: window.to.toISOString(),
       granularity: window.granularity,
     },

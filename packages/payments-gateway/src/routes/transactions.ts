@@ -102,6 +102,8 @@ transactionsRouter.post("/transactions/initialize", async (c: Context<VendorEnv>
     reference,
     callback_url: input.callback_url,
     subaccount: settlement.subaccount_code,
+    vendor_id: vendor.id,
+    external_ref: input.external_ref,
   })
 
   await updateTransaction(reference, {

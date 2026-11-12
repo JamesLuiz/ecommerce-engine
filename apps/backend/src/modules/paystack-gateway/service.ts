@@ -192,13 +192,26 @@ export class PaystackGatewayPaymentProvider extends AbstractPaymentProvider<Pays
 
   async getWebhookActionAndData(payload: any): Promise<any> {
     const headers = payload.headers ?? {}
-    const rawData = payload.rawData ?? payload.rawBody ?? JSON.stringify(payload.data ?? payload)
+    const rawData = payload.rawData ?? payload.rawBody ?? payload.data ?? payload
 
-    const ts = headers["x-gateway-timestamp"]
-    const sig = headers["x-gateway-signature"]
+    // Medusa preserves the raw request body as a Buffer (hooks middleware uses
+    // `preserveRawBody`). The signature must be verified over the exact bytes,
+    // and the same bytes must then be parsed as JSON.
+    const rawText = Buffer.isBuffer(rawData)
+      ? rawData.toString("utf8")
+      : typeof rawData === "string"
+        ? rawData
+        : JSON.stringify(rawData)
+
+    const ts = headers["x-gateway-timestamp"] ?? headers["X-Gateway-Timestamp"]
+    const sig = headers["x-gateway-signature"] ?? headers["X-Gateway-Signature"]
 
     if (!ts || !sig) {
       throw new MedusaError(MedusaError.Types.UNAUTHORIZED, "Missing gateway webhook signature headers")
+    }
+
+    if (!this.webhookSecret) {
+      throw new MedusaError(MedusaError.Types.UNAUTHORIZED, "Gateway webhook secret is not configured")
     }
 
     if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) {
@@ -207,7 +220,7 @@ export class PaystackGatewayPaymentProvider extends AbstractPaymentProvider<Pays
 
     const expected = crypto
       .createHmac("sha256", this.webhookSecret)
-      .update(`${ts}.${rawData}`)
+      .update(`${ts}.${rawText}`)
       .digest("hex")
 
     const sigBuffer = Buffer.from(sig)
@@ -217,12 +230,19 @@ export class PaystackGatewayPaymentProvider extends AbstractPaymentProvider<Pays
       throw new MedusaError(MedusaError.Types.UNAUTHORIZED, "bad signature")
     }
 
-    const dataObj = typeof rawData === "string" ? JSON.parse(rawData) : rawData
+    const dataObj = JSON.parse(rawText)
     const event = dataObj.event ?? ""
     const sessionData = dataObj.data ?? {}
-    const externalRef = sessionData.metadata?.external_ref ?? sessionData.reference
+    // The gateway copies the Medusa payment session id into Paystack metadata as
+    // `external_ref`. Without it the event cannot be tied to a session, so it is
+    // ignored rather than guessed from the Paystack reference.
+    const externalRef = sessionData.metadata?.external_ref
     const amountMinor = sessionData.amount ?? 0
     const amountMajor = amountMinor / 100
+
+    if (!externalRef) {
+      return { action: "not_supported", data: {} }
+    }
 
     if (event === "charge.success") {
       return {

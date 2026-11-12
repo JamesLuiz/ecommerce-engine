@@ -149,6 +149,57 @@ describe("PaystackGatewayPaymentProvider", () => {
       expect(result.data.amount).toBe(2500)
     })
 
+    it("verifies and parses the raw body when Medusa hands it over as a Buffer", async () => {
+      const ts = String(Math.floor(Date.now() / 1000))
+      const rawBody = JSON.stringify({
+        event: "charge.success",
+        data: {
+          reference: "acme_tx_2",
+          amount: 10000,
+          metadata: { external_ref: "payses_buffer" },
+        },
+      })
+      const signature = crypto
+        .createHmac("sha256", webhookSecret)
+        .update(`${ts}.${rawBody}`)
+        .digest("hex")
+
+      const result = await provider.getWebhookActionAndData({
+        headers: {
+          "x-gateway-timestamp": ts,
+          "x-gateway-signature": signature,
+        },
+        rawData: Buffer.from(rawBody, "utf8"),
+      })
+
+      expect(result.action).toBe("captured")
+      expect(result.data.session_id).toBe("payses_buffer")
+      expect(result.data.amount).toBe(100)
+    })
+
+    it("ignores a signed event that cannot be mapped to a payment session", async () => {
+      const ts = String(Math.floor(Date.now() / 1000))
+      const rawBody = JSON.stringify({
+        event: "charge.success",
+        data: { reference: "acme_tx_3", amount: 10000, metadata: {} },
+      })
+      const signature = crypto
+        .createHmac("sha256", webhookSecret)
+        .update(`${ts}.${rawBody}`)
+        .digest("hex")
+
+      const result = await provider.getWebhookActionAndData({
+        headers: {
+          "x-gateway-timestamp": ts,
+          "x-gateway-signature": signature,
+        },
+        rawData: rawBody,
+      })
+
+      expect(result.action).toBe("not_supported")
+      expect(result.data.session_id).toBeUndefined()
+    })
+
     it("throws unauthorized error on bad signature", async () => {
       const ts = String(Math.floor(Date.now() / 1000))
       const rawData = JSON.stringify({ event: "charge.success" })

@@ -110,6 +110,8 @@ describe("PaystackClient", () => {
       reference: "acme_abc",
       callback_url: "https://acme.example.com/checkout",
       subaccount: "ACCT_123",
+      vendor_id: "vnd_123",
+      external_ref: "payses_123",
     })
 
     expect(initialized.authorization_url).toContain("checkout.paystack.com")
@@ -119,5 +121,11 @@ describe("PaystackClient", () => {
 
     expect(body.bearer).toBe("subaccount")
     expect(body.subaccount).toBe("ACCT_123")
+    expect(body.metadata).toMatchObject({
+      gateway: "flowcheq",
+      callback_source: "medusa",
+      vendor_id: "vnd_123",
+      external_ref: "payses_123",
+    })
   })
 })

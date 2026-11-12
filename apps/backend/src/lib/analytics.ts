@@ -84,6 +84,12 @@ export type AnalyticsResult = {
   topProducts: TopProduct[]
   stock: StockSummary
   currencyCode: string
+  /**
+   * Start of the first bucket actually rendered. For presets with a fixed
+   * window this equals the requested `from`; for `range=all` it is the first
+   * order's bucket (or the current month when there are no orders).
+   */
+  effectiveFrom: string
 }
 
 export type AnalyticsWindow = {
@@ -371,8 +377,10 @@ export const buildAnalytics = (input: BuildAnalyticsInput): AnalyticsResult => {
     fallbackCurrency = "usd",
   } = input
 
-  const effectiveFrom =
-    input.from ?? earliestOrderDate(orders) ?? startOfUtcMonth(to)
+  const effectiveFrom = startOfBucket(
+    input.from ?? earliestOrderDate(orders) ?? startOfUtcMonth(to),
+    granularity
+  )
   const buckets = buildBuckets(effectiveFrom, to, granularity)
 
   const seriesByKey = new Map<string, AnalyticsBucket>()
@@ -465,5 +473,6 @@ export const buildAnalytics = (input: BuildAnalyticsInput): AnalyticsResult => {
     topProducts,
     stock: aggregateStock(stockItems, lowStockThreshold, lowStockLimit),
     currencyCode: mostCommonCurrency(currencyCounts) ?? fallbackCurrency,
+    effectiveFrom: effectiveFrom.toISOString(),
   }
 }
