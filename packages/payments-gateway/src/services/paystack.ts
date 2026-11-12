@@ -3,7 +3,7 @@ import type { Bank } from "../types.js"
 export type PaystackResolveResponse = {
   account_name: string
   account_number: string
-  bank_code: string
+  bank_id?: number
 }
 
 export type PaystackSubaccount = {
@@ -80,9 +80,23 @@ export class PaystackClient {
   }
 
   async listBanks(country = "nigeria"): Promise<Bank[]> {
-    const banks = await this.request<Bank[]>(
-      `/bank?country=${encodeURIComponent(country)}&perPage=100`,
-    )
+    const perPage = 100
+    const banks: Bank[] = []
+    let page = 1
+
+    while (page <= 20) {
+      const batch = await this.request<Bank[]>(
+        `/bank?country=${encodeURIComponent(country)}&perPage=${perPage}&page=${page}`,
+      )
+
+      banks.push(...batch)
+
+      if (batch.length < perPage) {
+        break
+      }
+
+      page += 1
+    }
 
     return banks
   }
@@ -91,10 +105,13 @@ export class PaystackClient {
     bankCode: string,
     accountNumber: string,
   ): Promise<PaystackResolveResponse> {
+    const query = new URLSearchParams({
+      account_number: accountNumber,
+      bank_code: bankCode,
+    })
+
     const data = await this.request<PaystackResolveResponse>(
-      `/bank/resolve?account_number=${encodeURIComponent(
-        accountNumber,
-      )}&bank_code=${encodeURIComponent(bankCode)}`,
+      `/bank/resolve?${query.toString()}`,
     )
 
     return data
@@ -193,3 +210,9 @@ export class PaystackClient {
     return data
   }
 }
+
+export const createPaystackClient = (): PaystackClient =>
+  new PaystackClient(
+    process.env.PAYSTACK_SECRET_KEY ?? "",
+    process.env.PAYSTACK_BASE_URL ?? "https://api.paystack.co",
+  )

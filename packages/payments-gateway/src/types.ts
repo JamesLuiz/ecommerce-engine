@@ -8,6 +8,7 @@ export type ErrorCode =
   | "settlement_not_configured"
   | "settlement_cooldown"
   | "account_resolve_failed"
+  | "account_number_mismatch"
   | "rate_limited"
   | "paystack_error"
   | "conflict"

@@ -1,7 +1,7 @@
 import type { Context } from "hono"
 import type { ErrorCode } from "../types.js"
 
-type GatewayStatusCode = 200 | 400 | 401 | 403 | 404 | 409 | 429 | 500
+type GatewayStatusCode = 200 | 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 | 502
 
 const statusToCode = (status: number): ErrorCode => {
   if (status === 400) {

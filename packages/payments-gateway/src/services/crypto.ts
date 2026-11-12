@@ -9,6 +9,9 @@ export const generateToken = (): string =>
 export const vendorSecret = (vendorId: string, webhookSigningRoot: string): string =>
   createHmac("sha256", webhookSigningRoot).update(vendorId).digest("hex")
 
+export const webhookSecretFor = (vendorId: string): string =>
+  vendorSecret(vendorId, process.env.WEBHOOK_SIGNING_ROOT ?? "")
+
 export const computeWebhookSignature = (
   secret: string,
   timestamp: string,

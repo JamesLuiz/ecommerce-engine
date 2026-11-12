@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import type { Context } from "hono"
 import { adminAuth } from "../middleware/adminAuth.js"
+import { webhookSecretFor } from "../services/crypto.js"
 import {
   createVendor,
   findVendorById,
@@ -35,6 +36,27 @@ adminVendorsRouter.post("/vendors", async (c: Context) => {
     },
     201,
   )
+})
+
+adminVendorsRouter.get("/vendors/:id", async (c: Context) => {
+  const id = c.req.param("id") ?? ""
+
+  const vendor = await findVendorById(id)
+
+  if (!vendor) {
+    return c.json({ error: { code: "not_found", message: "Vendor not found" } }, 404)
+  }
+
+  return c.json({
+    id: vendor.id,
+    slug: vendor.slug,
+    name: vendor.name,
+    status: vendor.status,
+    webhook_url: vendor.webhook_url,
+    allowed_origins: vendor.allowed_origins,
+    currency: vendor.currency,
+    webhook_signing_secret: webhookSecretFor(vendor.id),
+  })
 })
 
 adminVendorsRouter.post("/vendors/:id/rotate-token", async (c: Context) => {

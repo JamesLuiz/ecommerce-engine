@@ -1,16 +1,54 @@
+name: flowcheq-payments-gateway
+
+# Compose overrides the localhost hosts from .env with the service names below.
+x-gateway-env: &gateway-env
+  DATABASE_URL: postgres://gateway:${PG_PASSWORD:-gateway_dev_password}@pg:5432/gateway
+  REDIS_URL: redis://redis:6379/0
+
 services:
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infra/docker/gateway.Dockerfile
+    image: flowcheq/payments-gateway:local
+    command: ["dist/migrate.js"]
+    env_file: .env
+    environment: *gateway-env
+    depends_on:
+      pg:
+        condition: service_healthy
+    restart: "no"
+
   gateway:
-    build: .
+    build:
+      context: ../..
+      dockerfile: infra/docker/gateway.Dockerfile
+    image: flowcheq/payments-gateway:local
     env_file: .env
+    environment: *gateway-env
     ports: ["8080:8080"]
-    depends_on: [pg, redis]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+
   worker:
-    build: .
-    command: node dist/worker.js
+    build:
+      context: ../..
+      dockerfile: infra/docker/gateway.Dockerfile
+    image: flowcheq/payments-gateway:local
+    command: ["dist/worker.js"]
     env_file: .env
-    depends_on: [pg, redis]
+    environment: *gateway-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+
   pg:
     image: postgres:16
     environment:
@@ -18,8 +56,21 @@ services:
       POSTGRES_USER: gateway
       POSTGRES_PASSWORD: ${PG_PASSWORD:-gateway_dev_password}
     volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway -d gateway"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     restart: unless-stopped
+
   redis:
     image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
     restart: unless-stopped
-volumes: { pgdata: {} }
+
+volumes:
+  pgdata: {}

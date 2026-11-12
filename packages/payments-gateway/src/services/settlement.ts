@@ -1,8 +1,9 @@
 import { db } from "../db.js"
 import type { PaystackClient } from "./paystack.js"
+import { resolveBankAccount } from "./accounts.js"
 import { findVendorById } from "./vendors.js"
 import { loadConfig } from "../config.js"
-import type { Settlement, SettlementInput } from "../types.js"
+import type { ErrorCode, Settlement, SettlementInput } from "../types.js"
 
 type SettlementRow = {
   vendor_id: string
@@ -14,6 +15,18 @@ type SettlementRow = {
   status: "active"
   verified_at: Date
   updated_at: Date
+}
+
+export class SettlementError extends Error {
+  readonly code: ErrorCode
+  readonly status: number
+
+  constructor(code: ErrorCode, message: string, status = 500) {
+    super(message)
+    this.name = "SettlementError"
+    this.code = code
+    this.status = status
+  }
 }
 
 const toSettlement = (row: SettlementRow): Settlement => ({
@@ -45,6 +58,17 @@ export const findSettlementByVendorId = async (
   return toSettlement(row)
 }
 
+const resolveBankName = async (
+  client: PaystackClient,
+  bankCode: string,
+): Promise<string> => {
+  try {
+    return await client.getBankName(bankCode)
+  } catch {
+    return bankCode
+  }
+}
+
 export const saveSettlement = async (
   client: PaystackClient,
   vendorId: string,
@@ -55,55 +79,60 @@ export const saveSettlement = async (
   const vendor = await findVendorById(vendorId)
 
   if (!vendor) {
-    throw new Error("not_found")
+    throw new SettlementError("not_found", "Vendor not found.", 404)
   }
 
   if (vendor.status !== "active") {
-    throw new Error("vendor_suspended")
+    throw new SettlementError("vendor_suspended", "Vendor is suspended.", 403)
   }
 
   const existing = await findSettlementByVendorId(vendorId)
 
-  if (existing) {
+  if (existing && config.SETTLEMENT_CHANGE_COOLDOWN_HOURS > 0) {
     const cooldownEndsAt =
-      existing.updated_at.getTime() + config.SETTLEMENT_CHANGE_COOLDOWN_HOURS * 60 * 60 * 1000
+      existing.updated_at.getTime() +
+      config.SETTLEMENT_CHANGE_COOLDOWN_HOURS * 60 * 60 * 1000
 
     if (Date.now() < cooldownEndsAt) {
-      throw new Error("settlement_cooldown")
+      throw new SettlementError(
+        "settlement_cooldown",
+        "The settlement account was changed too recently. Try again later.",
+        429,
+      )
     }
   }
 
-  const resolved = await client.resolveAccount(input.bank_code, input.account_number)
+  const resolved = await resolveBankAccount(client, input)
 
-  if (resolved.account_number.replace(/\D/g, "").length !== 10) {
-    throw new Error("account_resolve_failed")
+  const subaccountInput = {
+    business_name: vendor.name,
+    settlement_bank: resolved.bank_code,
+    account_number: resolved.account_number,
+    percentage_charge: 0,
   }
-
-  const now = new Date()
 
   let subaccountCode = existing?.subaccount_code ?? null
 
   if (existing) {
-    const updated = await client.updateSubaccount(existing.subaccount_code, {
-      business_name: vendor.name,
-      settlement_bank: `${input.bank_code}-${input.account_number}`,
-      account_number: input.account_number,
-      percentage_charge: 0,
-    })
+    const updated = await client.updateSubaccount(existing.subaccount_code, subaccountInput)
 
     subaccountCode = updated.account_code
   } else {
-    const created = await client.createSubaccount({
-      business_name: vendor.name,
-      settlement_bank: `${input.bank_code}-${input.account_number}`,
-      account_number: input.account_number,
-      percentage_charge: 0,
-    })
+    const created = await client.createSubaccount(subaccountInput)
 
     subaccountCode = created.account_code
   }
 
-  const bankName = await client.getBankName(input.bank_code)
+  if (!subaccountCode) {
+    throw new SettlementError(
+      "paystack_error",
+      "Paystack did not return a subaccount code.",
+      502,
+    )
+  }
+
+  const bankName = await resolveBankName(client, resolved.bank_code)
+  const now = new Date()
 
   const rows = (await db.unsafe<SettlementRow[]>(
     `insert into settlements (
@@ -123,7 +152,7 @@ export const saveSettlement = async (
      returning *`,
     [
       vendorId,
-      input.bank_code,
+      resolved.bank_code,
       bankName,
       resolved.account_number.slice(-4),
       resolved.account_name,
@@ -134,15 +163,22 @@ export const saveSettlement = async (
 
   const row = rows[0]
 
+  if (!row) {
+    throw new SettlementError("internal_error", "Failed to save the settlement.", 500)
+  }
+
   await db.unsafe(
     `insert into settlement_audit (vendor_id, action, bank_code, account_number_last4, account_name, actor)
-     values ($1, 'updated', $2, $3, $4, $5)`,
-    [vendorId, input.bank_code, resolved.account_number.slice(-4), resolved.account_name, input.actor],
+     values ($1, $2, $3, $4, $5, $6)`,
+    [
+      vendorId,
+      existing ? "updated" : "created",
+      resolved.bank_code,
+      resolved.account_number.slice(-4),
+      resolved.account_name,
+      input.actor,
+    ],
   )
-
-  if (!row) {
-    throw new Error("Failed to save the settlement")
-  }
 
   return toSettlement(row)
 }

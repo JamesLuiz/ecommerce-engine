@@ -1,5 +1,5 @@
 import { db } from "../db.js"
-import { sha256Hex, generateToken } from "./crypto.js"
+import { sha256Hex, generateToken, webhookSecretFor } from "./crypto.js"
 import type { CreateVendorInput, UpdateVendorInput, Vendor } from "../types.js"
 
 type VendorRow = {
@@ -83,7 +83,7 @@ export const createVendor = async (
 
   const vendor = toVendor(row)
 
-  return { vendor, token, webhookSigningSecret: tokenHash }
+  return { vendor, token, webhookSigningSecret: webhookSecretFor(vendor.id) }
 }
 
 export const rotateVendorToken = async (id: string): Promise<string> => {

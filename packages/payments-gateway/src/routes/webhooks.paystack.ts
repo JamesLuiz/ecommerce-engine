@@ -3,7 +3,7 @@ import type { Context } from "hono"
 import { createHash, createHmac, timingSafeEqual } from "node:crypto"
 import { db } from "../db.js"
 import { webhookForwardQueue } from "../jobs/queue.js"
-import { computeWebhookSignature, vendorSecret } from "../services/crypto.js"
+import { computeWebhookSignature, webhookSecretFor } from "../services/crypto.js"
 import { updateTransaction } from "../services/transactions.js"
 import { findVendorById } from "../services/vendors.js"
 import type { Transaction } from "../types.js"
@@ -120,7 +120,7 @@ webhooksRouter.post("/paystack", async (c: Context) => {
 
   if (vendor?.webhook_url) {
     const timestamp = String(Math.floor(Date.now() / 1000))
-    const secret = vendorSecret(resolvedVendorId, process.env.WEBHOOK_SIGNING_ROOT ?? "")
+    const secret = webhookSecretFor(resolvedVendorId)
     const forwardSignature = computeWebhookSignature(secret, timestamp, rawBody)
 
     await webhookForwardQueue.add("forward", {

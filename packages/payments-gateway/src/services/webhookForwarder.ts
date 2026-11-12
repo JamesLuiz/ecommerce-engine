@@ -1,4 +1,4 @@
-import { computeWebhookSignature, vendorSecret } from "./crypto.js"
+import { computeWebhookSignature, webhookSecretFor } from "./crypto.js"
 
 export type WebhookForwardInput = {
   vendorId: string
@@ -10,7 +10,7 @@ export type WebhookForwardInput = {
 export const forwardVendorWebhook = async (
   input: WebhookForwardInput,
 ): Promise<{ delivered: boolean; attempts: number }> => {
-  const secret = vendorSecret(input.vendorId, process.env.WEBHOOK_SIGNING_ROOT ?? "")
+  const secret = webhookSecretFor(input.vendorId)
   const timestamp = input.timestamp ?? String(Math.floor(Date.now() / 1000))
   const signature = computeWebhookSignature(secret, timestamp, input.rawBody)
 
