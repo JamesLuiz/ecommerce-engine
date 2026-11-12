@@ -111,36 +111,15 @@ module.exports = defineConfig({
       options: {
         providers: [
           {
+            // The only Paystack integration. Tenants talk to the central gateway
+            // with a per-vendor token; the Paystack master secret never leaves the
+            // gateway (payments D1).
             resolve: "./src/modules/paystack-gateway",
             id: "paystack-gateway",
             options: {
               gatewayUrl: process.env.GATEWAY_URL,
               gatewayToken: process.env.GATEWAY_TOKEN,
               webhookSecret: process.env.GATEWAY_WEBHOOK_SECRET,
-            },
-          },
-          {
-            resolve: "./src/providers/payment-paystack",
-            id: "paystack",
-            options: {
-              publicKey:
-                process.env.PAYSTACK_PUBLIC_KEY || "pk_test_local_placeholder",
-              secretKey:
-                process.env.PAYSTACK_SECRET_KEY || "sk_test_local_placeholder",
-              webhookSecret:
-                process.env.PAYSTACK_WEBHOOK_SECRET || "whsec_local_placeholder",
-            },
-          },
-          {
-            resolve: "./src/providers/payment-flutterwave",
-            id: "flutterwave",
-            options: {
-              publicKey:
-                process.env.FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST_local_placeholder",
-              secretKey:
-                process.env.FLUTTERWAVE_SECRET_KEY || "FLWSECK_TEST_local_placeholder",
-              webhookSecret:
-                process.env.FLUTTERWAVE_WEBHOOK_SECRET || "flutterwave_local_placeholder",
             },
           },
         ],

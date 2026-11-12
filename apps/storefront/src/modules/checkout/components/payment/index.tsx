@@ -1,6 +1,6 @@
 "use client"
 import { RadioGroup } from "@headlessui/react"
-import { getPaymentInfo, isStripeLike } from "@lib/constants"
+import { getPaymentInfo, isPaystackGateway, isStripeLike } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -18,6 +18,14 @@ import {
 import { HttpTypes } from "@medusajs/types"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+
+const getAuthorizationUrl = (
+  session?: HttpTypes.StorePaymentSession
+): string | null => {
+  const value = session?.data?.authorization_url
+
+  return typeof value === "string" && value.length > 0 ? value : null
+}
 
 const Payment = ({
   cart,
@@ -79,11 +87,42 @@ const Payment = ({
   const handleSubmit = async () => {
     setIsLoading(true)
     try {
-      const shouldInputPaymentDetails =
-        isStripeLike(selectedPaymentMethod) && !activeSession
-
       const checkActiveSession =
         activeSession?.provider_id === selectedPaymentMethod
+
+      if (isPaystackGateway(selectedPaymentMethod)) {
+        const callbackUrl = `${window.location.origin}${pathname}`
+
+        let authorizationUrl = checkActiveSession
+          ? getAuthorizationUrl(activeSession)
+          : null
+
+        if (!authorizationUrl) {
+          const response = await initiatePaymentSession(cart, {
+            provider_id: selectedPaymentMethod,
+            data: { callback_url: callbackUrl },
+          })
+
+          const session = response.payment_collection?.payment_sessions?.find(
+            (paymentSession) =>
+              paymentSession.provider_id === selectedPaymentMethod
+          )
+
+          authorizationUrl = getAuthorizationUrl(session)
+        }
+
+        if (!authorizationUrl) {
+          throw new Error(
+            "Paystack did not return a checkout URL. Confirm the payment gateway is configured for this store."
+          )
+        }
+
+        window.location.assign(authorizationUrl)
+        return
+      }
+
+      const shouldInputPaymentDetails =
+        isStripeLike(selectedPaymentMethod) && !activeSession
 
       if (!checkActiveSession) {
         await initiatePaymentSession(cart, {
@@ -109,6 +148,19 @@ const Payment = ({
   useEffect(() => {
     setError(null)
   }, [isOpen])
+
+  useEffect(() => {
+    const reference =
+      searchParams.get("reference") ?? searchParams.get("trxref")
+
+    if (!reference || searchParams.get("step") === "review") {
+      return
+    }
+
+    router.replace(pathname + "?" + createQueryString("step", "review"), {
+      scroll: false,
+    })
+  }, [createQueryString, pathname, router, searchParams])
 
   return (
     <div className="bg-white">
@@ -197,9 +249,11 @@ const Payment = ({
             }
             data-testid="submit-payment-button"
           >
-            {!activeSession && isStripeLike(selectedPaymentMethod)
-              ? "Enter payment details"
-              : "Continue to review"}
+            {isPaystackGateway(selectedPaymentMethod)
+              ? "Continue to Paystack"
+              : !activeSession && isStripeLike(selectedPaymentMethod)
+                ? "Enter payment details"
+                : "Continue to review"}
           </Button>
         </div>
 

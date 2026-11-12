@@ -1,5 +1,8 @@
 import { z } from "zod"
 
+const isEnabled = (env: NodeJS.ProcessEnv): boolean =>
+  (env.REFUNDS_ENABLED ?? "false").trim().toLowerCase() === "true"
+
 export const configSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().default(8080),
@@ -26,7 +29,7 @@ export const loadConfig = (env: NodeJS.ProcessEnv): Config => {
     PAYSTACK_BASE_URL: env.PAYSTACK_BASE_URL,
     ADMIN_TOKEN: env.ADMIN_TOKEN,
     WEBHOOK_SIGNING_ROOT: env.WEBHOOK_SIGNING_ROOT,
-    REFUNDS_ENABLED: env.REFUNDS_ENABLED,
+    REFUNDS_ENABLED: isEnabled(env),
     SETTLEMENT_CHANGE_COOLDOWN_HOURS: env.SETTLEMENT_CHANGE_COOLDOWN_HOURS,
     LOG_LEVEL: env.LOG_LEVEL,
   })
