@@ -58,6 +58,20 @@ export class GatewayClient {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    if (!this.gatewayUrl) {
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        "GATEWAY_URL is not configured for this store",
+      )
+    }
+
+    if (!this.gatewayToken) {
+      throw new MedusaError(
+        MedusaError.Types.UNAUTHORIZED,
+        "GATEWAY_TOKEN is not configured for this store",
+      )
+    }
+
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
 

@@ -1,5 +1,6 @@
 import crypto from "node:crypto"
 import { PaystackGatewayPaymentProvider } from "../service"
+import { GatewayClient } from "../gateway-client"
 import PaystackGatewayModule from "../index"
 import { Modules } from "@medusajs/framework/utils"
 
@@ -232,6 +233,20 @@ describe("PaystackGatewayPaymentProvider", () => {
           rawData,
         })
       ).rejects.toThrow("stale webhook")
+    })
+  })
+
+  describe("GatewayClient configuration", () => {
+    it("fails fast with a clear error when GATEWAY_URL is missing", async () => {
+      const client = new GatewayClient({ gatewayUrl: "", gatewayToken: "" })
+      const fetchSpy = jest.spyOn(global, "fetch")
+
+      await expect(client.getBanks()).rejects.toThrow(
+        "GATEWAY_URL is not configured for this store"
+      )
+      expect(fetchSpy).not.toHaveBeenCalled()
+
+      fetchSpy.mockRestore()
     })
   })
 })
