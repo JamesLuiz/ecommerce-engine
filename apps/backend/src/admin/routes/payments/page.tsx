@@ -110,6 +110,7 @@ const PaymentsPage = () => {
   const [selectedBankCode, setSelectedBankCode] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [resolvedAccountName, setResolvedAccountName] = useState("")
+  const [resolveError, setResolveError] = useState("")
   const [isResolving, setIsResolving] = useState(false)
   const [isSavingSettlement, setIsSavingSettlement] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
@@ -214,20 +215,23 @@ const PaymentsPage = () => {
     }
   }, [activeTab])
 
-  // Auto-resolve account number at 10 digits. Paystack test mode rate-limits
-  // /bank/resolve, so the account name is confirmed by the subaccount call on save.
+  // Auto-resolve the account holder name as soon as the bank is selected and
+  // the account number reaches 10 digits, before the settlement is saved.
+  // Paystack test mode rate-limits /bank/resolve; when that limit is hit the
+  // error is shown inline and the subaccount call validates on save instead.
   useEffect(() => {
-    if (testMode !== false) {
-      setResolvedAccountName("")
-      return
-    }
+    setResolveError("")
 
     if (accountNumber.length === 10 && selectedBankCode) {
       handleResolve(selectedBankCode, accountNumber)
     } else {
+      // Invalidate any in-flight resolve so a late response cannot repopulate
+      // the holder name after the input changed.
+      resolveRequestId.current += 1
       setResolvedAccountName("")
+      setIsResolving(false)
     }
-  }, [accountNumber, selectedBankCode, testMode])
+  }, [accountNumber, selectedBankCode])
 
   const handleResolve = async (bankCode: string, accNum: string) => {
     const requestId = ++resolveRequestId.current
@@ -247,15 +251,21 @@ const PaymentsPage = () => {
       if (res.ok) {
         const data = await res.json()
         setResolvedAccountName(data.account_name)
+        setResolveError("")
         toast.success(`Account verified: ${data.account_name}`)
       } else {
+        const message = await readErrorMessage(res, "Could not verify account details with bank")
         setResolvedAccountName("")
-        toast.error(await readErrorMessage(res, "Could not verify account details with bank"))
+        setResolveError(
+          message.includes("Test mode daily limit")
+            ? "Paystack test mode has hit its daily limit for live bank lookups. The holder name will be confirmed when you save. Switch to a live key to see it before saving."
+            : message,
+        )
       }
     } catch {
       if (requestId === resolveRequestId.current) {
         setResolvedAccountName("")
-        toast.error("Account verification failed")
+        setResolveError("Account verification failed")
       }
     } finally {
       if (requestId === resolveRequestId.current) {
@@ -585,8 +595,8 @@ const PaymentsPage = () => {
                   borderRadius: 6,
                 }}>
                   <Text size="small" className="text-ui-fg-subtle">
-                    Paystack test mode: account resolution is rate-limited, so Paystack
-                    validates the account and returns the holder name when you save.
+                    Paystack test mode limits live account lookups. If the holder name does
+                    not appear automatically, Paystack confirms it when you save.
                   </Text>
                 </div>
               )}
@@ -595,6 +605,17 @@ const PaymentsPage = () => {
                 <Text size="small" className="text-ui-fg-subtle">
                   Verifying account with bank...
                 </Text>
+              )}
+
+              {resolveError && (
+                <div style={{
+                  padding: "12px 16px",
+                  background: "#FEF2F2",
+                  border: "1px solid #FECACA",
+                  borderRadius: 6,
+                }}>
+                  <Text size="small" className="text-ui-fg-subtle">{resolveError}</Text>
+                </div>
               )}
 
               {resolvedAccountName && (
