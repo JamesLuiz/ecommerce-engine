@@ -1,9 +1,8 @@
 import { Hono } from "hono"
 import type { Context } from "hono"
-import { redis } from "../redis.js"
-import { PaystackClient } from "../services/paystack.js"
+import { listBanksForVendor } from "../services/bankDirectory.js"
+import { isPaystackTestKey } from "../services/banks.js"
 import { vendorAuth } from "../middleware/vendorAuth.js"
-import type { Bank } from "../types.js"
 import type { VendorEnv } from "../env.js"
 
 export const banksRouter = new Hono<VendorEnv>()
@@ -11,22 +10,12 @@ export const banksRouter = new Hono<VendorEnv>()
 banksRouter.use("*", vendorAuth)
 
 banksRouter.get("/banks", async (c: Context<VendorEnv>) => {
-  const cacheKey = "banks:nigeria"
+  const vendor = c.get("vendor")
 
-  const cached = await redis.get(cacheKey)
+  const banks = await listBanksForVendor(vendor)
 
-  if (cached) {
-    return c.json(JSON.parse(cached) as { data: Bank[] })
-  }
-
-  const client = new PaystackClient(
-    process.env.PAYSTACK_SECRET_KEY ?? "",
-    process.env.PAYSTACK_BASE_URL ?? "https://api.paystack.co",
-  )
-
-  const banks = await client.listBanks()
-
-  await redis.set(cacheKey, JSON.stringify({ data: banks }), "EX", 60 * 60 * 24)
-
-  return c.json({ data: banks })
+  return c.json({
+    data: banks,
+    test_mode: isPaystackTestKey(process.env.PAYSTACK_SECRET_KEY ?? ""),
+  })
 })

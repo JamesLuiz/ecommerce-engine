@@ -14,7 +14,7 @@ import {
   toast,
 } from "@medusajs/ui"
 import { CreditCard, ArrowPath } from "@medusajs/icons"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 type Transaction = {
   reference: string
@@ -76,6 +76,15 @@ const statusColor = (status: string): "green" | "red" | "orange" | "grey" => {
   }
 }
 
+const readErrorMessage = async (res: Response, fallback: string): Promise<string> => {
+  try {
+    const body = await res.json()
+    return body?.error?.message ?? body?.message ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
 const PaymentsPage = () => {
   const [activeTab, setActiveTab] = useState("transactions")
 
@@ -96,12 +105,32 @@ const PaymentsPage = () => {
   const [settlement, setSettlement] = useState<Settlement | null>(null)
   const [hasSettlement, setHasSettlement] = useState<boolean>(true)
   const [banks, setBanks] = useState<Bank[]>([])
+  const [isLoadingBanks, setIsLoadingBanks] = useState(false)
+  const [bankSearch, setBankSearch] = useState("")
   const [selectedBankCode, setSelectedBankCode] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [resolvedAccountName, setResolvedAccountName] = useState("")
   const [isResolving, setIsResolving] = useState(false)
   const [isSavingSettlement, setIsSavingSettlement] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [testMode, setTestMode] = useState<boolean | null>(null)
+  const resolveRequestId = useRef(0)
+
+  const bankOptions = useMemo(() => {
+    const unique = Array.from(
+      new Map(banks.map((bank): [string, Bank] => [bank.code, bank])).values(),
+    )
+    const query = bankSearch.trim().toLowerCase()
+
+    if (!query) {
+      return unique
+    }
+
+    return unique.filter(
+      (bank) =>
+        bank.name.toLowerCase().includes(query) || bank.code.toLowerCase().includes(query),
+    )
+  }, [banks, bankSearch])
 
   // Search debounce
   useEffect(() => {
@@ -144,6 +173,7 @@ const PaymentsPage = () => {
 
   // Load Settlement & Banks
   const fetchSettlementData = async () => {
+    setIsLoadingBanks(true)
     try {
       const [banksRes, stlRes] = await Promise.all([
         fetch("/admin/payment/banks", { credentials: "same-origin" }),
@@ -153,6 +183,9 @@ const PaymentsPage = () => {
       if (banksRes.ok) {
         const banksData = await banksRes.json()
         setBanks(banksData.data || [])
+        setTestMode(Boolean(banksData.test_mode))
+      } else {
+        toast.error(await readErrorMessage(banksRes, "Failed to load banks from Paystack"))
       }
 
       if (stlRes.ok) {
@@ -165,9 +198,13 @@ const PaymentsPage = () => {
         }
       } else if (stlRes.status === 404 || stlRes.status === 409) {
         setHasSettlement(false)
+      } else {
+        toast.error(await readErrorMessage(stlRes, "Failed to load settlement details"))
       }
     } catch {
       toast.error("Failed to load settlement details")
+    } finally {
+      setIsLoadingBanks(false)
     }
   }
 
@@ -177,16 +214,23 @@ const PaymentsPage = () => {
     }
   }, [activeTab])
 
-  // Auto-resolve account number at 10 digits
+  // Auto-resolve account number at 10 digits. Paystack test mode rate-limits
+  // /bank/resolve, so the account name is confirmed by the subaccount call on save.
   useEffect(() => {
+    if (testMode !== false) {
+      setResolvedAccountName("")
+      return
+    }
+
     if (accountNumber.length === 10 && selectedBankCode) {
       handleResolve(selectedBankCode, accountNumber)
     } else {
       setResolvedAccountName("")
     }
-  }, [accountNumber, selectedBankCode])
+  }, [accountNumber, selectedBankCode, testMode])
 
   const handleResolve = async (bankCode: string, accNum: string) => {
+    const requestId = ++resolveRequestId.current
     setIsResolving(true)
     try {
       const res = await fetch("/admin/payment/resolve-account", {
@@ -196,19 +240,27 @@ const PaymentsPage = () => {
         body: JSON.stringify({ bank_code: bankCode, account_number: accNum }),
       })
 
+      if (requestId !== resolveRequestId.current) {
+        return
+      }
+
       if (res.ok) {
         const data = await res.json()
         setResolvedAccountName(data.account_name)
         toast.success(`Account verified: ${data.account_name}`)
       } else {
         setResolvedAccountName("")
-        toast.error("Could not verify account details with bank")
+        toast.error(await readErrorMessage(res, "Could not verify account details with bank"))
       }
     } catch {
-      setResolvedAccountName("")
-      toast.error("Account verification failed")
+      if (requestId === resolveRequestId.current) {
+        setResolvedAccountName("")
+        toast.error("Account verification failed")
+      }
     } finally {
-      setIsResolving(false)
+      if (requestId === resolveRequestId.current) {
+        setIsResolving(false)
+      }
     }
   }
 
@@ -232,9 +284,10 @@ const PaymentsPage = () => {
         setShowConfirmModal(false)
         setAccountNumber("")
         setResolvedAccountName("")
+        setBankSearch("")
         toast.success("Settlement account saved successfully!")
       } else {
-        toast.error("Failed to save settlement account")
+        toast.error(await readErrorMessage(res, "Failed to save settlement account"))
       }
     } catch {
       toast.error("Failed to save settlement account")
@@ -450,33 +503,63 @@ const PaymentsPage = () => {
 
           {/* Update Settlement Form */}
           <Container style={{ padding: 24 }}>
-            <Heading level="h2" style={{ marginBottom: 8 }}>
-              {settlement ? "Change Settlement Account" : "Add Settlement Bank Account"}
-            </Heading>
-            <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 20 }}>
-              All customer payments will settle directly to this account via Paystack.
-            </Text>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+              <div>
+                <Heading level="h2" style={{ marginBottom: 8 }}>
+                  {settlement ? "Change Settlement Account" : "Add Settlement Bank Account"}
+                </Heading>
+                <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 20 }}>
+                  All customer payments will settle directly to this account via Paystack.
+                </Text>
+              </div>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => fetchSettlementData()}
+                disabled={isLoadingBanks}
+              >
+                <ArrowPath className={isLoadingBanks ? "animate-spin" : ""} />
+                Refresh banks
+              </Button>
+            </div>
 
             <div style={{ display: "grid", gap: 16, maxWidth: 480 }}>
               <div>
                 <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>
                   Bank
                 </label>
+                <Input
+                  placeholder="Search banks..."
+                  value={bankSearch}
+                  onChange={(e) => setBankSearch(e.target.value)}
+                  style={{ marginBottom: 8 }}
+                />
                 <Select value={selectedBankCode} onValueChange={(val) => {
                   setSelectedBankCode(val)
                   setResolvedAccountName("")
+                  setBankSearch("")
                 }}>
                   <Select.Trigger>
-                    <Select.Value placeholder="Select bank" />
+                    <Select.Value placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"} />
                   </Select.Trigger>
                   <Select.Content>
-                    {banks.map((b) => (
+                    {bankOptions.map((b) => (
                       <Select.Item key={b.code} value={b.code}>
                         {b.name}
                       </Select.Item>
                     ))}
                   </Select.Content>
                 </Select>
+                {!isLoadingBanks && banks.length === 0 && (
+                  <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 6 }}>
+                    Could not load banks from Paystack. Use Refresh banks to try again.
+                  </Text>
+                )}
+                {!isLoadingBanks && banks.length > 0 && bankOptions.length === 0 && (
+                  <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 6 }}>
+                    No bank matches "{bankSearch}".
+                  </Text>
+                )}
               </div>
 
               <div>
@@ -493,6 +576,20 @@ const PaymentsPage = () => {
                   }}
                 />
               </div>
+
+              {testMode === true && (
+                <div style={{
+                  padding: "12px 16px",
+                  background: "#EFF6FF",
+                  border: "1px solid #BFDBFE",
+                  borderRadius: 6,
+                }}>
+                  <Text size="small" className="text-ui-fg-subtle">
+                    Paystack test mode: account resolution is rate-limited, so Paystack
+                    validates the account and returns the holder name when you save.
+                  </Text>
+                </div>
+              )}
 
               {isResolving && (
                 <Text size="small" className="text-ui-fg-subtle">
@@ -514,7 +611,11 @@ const PaymentsPage = () => {
 
               <div style={{ marginTop: 12 }}>
                 <Button
-                  disabled={!resolvedAccountName || isResolving || isSavingSettlement}
+                  disabled={
+                    (!resolvedAccountName && testMode !== true) ||
+                    isResolving ||
+                    isSavingSettlement
+                  }
                   onClick={() => {
                     if (settlement) {
                       setShowConfirmModal(true)
@@ -544,7 +645,10 @@ const PaymentsPage = () => {
                 <Heading level="h2">Change Settlement Destination?</Heading>
                 <Text style={{ marginTop: 12 }} className="text-ui-fg-subtle">
                   Warning: Changing your bank account will redirect all future payouts to{" "}
-                  <strong>{resolvedAccountName}</strong>. Are you sure you want to proceed?
+                  <strong>
+                    {resolvedAccountName || `the account ending in ${accountNumber.slice(-4)}`}
+                  </strong>
+                  . Are you sure you want to proceed?
                 </Text>
                 <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 24 }}>
                   <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>

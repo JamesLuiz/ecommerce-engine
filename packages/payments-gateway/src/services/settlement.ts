@@ -1,6 +1,7 @@
 import { db } from "../db.js"
 import type { PaystackClient } from "./paystack.js"
-import { resolveBankAccount } from "./accounts.js"
+import { AccountResolveError, resolveBankAccount } from "./accounts.js"
+import { countryForCurrency, isPaystackTestKey } from "./banks.js"
 import { findVendorById } from "./vendors.js"
 import { loadConfig } from "../config.js"
 import type { ErrorCode, Settlement, SettlementInput } from "../types.js"
@@ -61,13 +62,20 @@ export const findSettlementByVendorId = async (
 const resolveBankName = async (
   client: PaystackClient,
   bankCode: string,
+  currency: string,
 ): Promise<string> => {
   try {
-    return await client.getBankName(bankCode)
+    return await client.getBankName(bankCode, countryForCurrency(currency), currency)
   } catch {
-    return bankCode
+    return bankCode === "001" ? "Test Bank (Paystack test mode)" : bankCode
   }
 }
+
+const isTestModeResolveLimit = (error: unknown): boolean =>
+  error instanceof AccountResolveError && /test mode daily limit/i.test(error.message)
+
+const isInvalidAccountDetails = (error: unknown): boolean =>
+  error instanceof Error && /account details are invalid/i.test(error.message)
 
 export const saveSettlement = async (
   client: PaystackClient,
@@ -102,26 +110,46 @@ export const saveSettlement = async (
     }
   }
 
-  const resolved = await resolveBankAccount(client, input)
+  const testMode = isPaystackTestKey(process.env.PAYSTACK_SECRET_KEY ?? "")
+  let resolved: Awaited<ReturnType<typeof resolveBankAccount>> | null = null
+
+  try {
+    resolved = await resolveBankAccount(client, input)
+  } catch (error) {
+    // Paystack test mode rate-limits /bank/resolve after a few calls and tells
+    // you to use bank code 001, which cannot back a subaccount. The subaccount
+    // endpoint still validates the account, so let it do that in test mode.
+    if (!testMode || !isTestModeResolveLimit(error)) {
+      throw error
+    }
+  }
 
   const subaccountInput = {
     business_name: vendor.name,
-    settlement_bank: resolved.bank_code,
-    account_number: resolved.account_number,
+    settlement_bank: resolved?.bank_code ?? input.bank_code,
+    account_number: resolved?.account_number ?? input.account_number,
     percentage_charge: 0,
   }
 
-  let subaccountCode = existing?.subaccount_code ?? null
+  let subaccount: Awaited<ReturnType<PaystackClient["createSubaccount"]>>
 
-  if (existing) {
-    const updated = await client.updateSubaccount(existing.subaccount_code, subaccountInput)
+  try {
+    subaccount = existing
+      ? await client.updateSubaccount(existing.subaccount_code, subaccountInput)
+      : await client.createSubaccount(subaccountInput)
+  } catch (error) {
+    if (isInvalidAccountDetails(error)) {
+      throw new SettlementError(
+        "account_resolve_failed",
+        error instanceof Error ? error.message : "Paystack could not validate the account details.",
+        422,
+      )
+    }
 
-    subaccountCode = updated.account_code
-  } else {
-    const created = await client.createSubaccount(subaccountInput)
-
-    subaccountCode = created.account_code
+    throw error
   }
+
+  const subaccountCode = subaccount.subaccount_code
 
   if (!subaccountCode) {
     throw new SettlementError(
@@ -131,7 +159,21 @@ export const saveSettlement = async (
     )
   }
 
-  const bankName = await resolveBankName(client, resolved.bank_code)
+  const accountName = (resolved?.account_name ?? subaccount.account_name ?? "").trim()
+
+  if (!accountName) {
+    throw new SettlementError(
+      "account_resolve_failed",
+      "Paystack did not return an account name for the settlement account.",
+      422,
+    )
+  }
+
+  const bankCode = resolved?.bank_code ?? input.bank_code
+  const accountNumber = resolved?.account_number ?? input.account_number
+  const bankName =
+    subaccount.settlement_bank ||
+    (await resolveBankName(client, bankCode, vendor.currency))
   const now = new Date()
 
   const rows = (await db.unsafe<SettlementRow[]>(
@@ -152,10 +194,10 @@ export const saveSettlement = async (
      returning *`,
     [
       vendorId,
-      resolved.bank_code,
+      bankCode,
       bankName,
-      resolved.account_number.slice(-4),
-      resolved.account_name,
+      accountNumber.slice(-4),
+      accountName,
       subaccountCode,
       now,
     ],
@@ -173,9 +215,9 @@ export const saveSettlement = async (
     [
       vendorId,
       existing ? "updated" : "created",
-      resolved.bank_code,
-      resolved.account_number.slice(-4),
-      resolved.account_name,
+      bankCode,
+      accountNumber.slice(-4),
+      accountName,
       input.actor,
     ],
   )

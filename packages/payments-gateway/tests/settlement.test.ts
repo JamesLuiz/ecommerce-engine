@@ -80,14 +80,16 @@ const fakeClient = (): PaystackClient =>
       bank_id: 9,
     })),
     createSubaccount: vi.fn(async () => ({
-      account_code: "ACCT_123",
+      subaccount_code: "ACCT_123",
       percentage_charge: 0,
-      settlement_bank: "058",
+      settlement_bank: "GTBank",
+      account_name: "ACME LIMITED",
     })),
     updateSubaccount: vi.fn(async () => ({
-      account_code: "ACCT_OLD",
+      subaccount_code: "ACCT_OLD",
       percentage_charge: 0,
-      settlement_bank: "058",
+      settlement_bank: "GTBank",
+      account_name: "ACME LIMITED",
     })),
     getBankName: vi.fn(async () => "GTBank"),
   }) as unknown as PaystackClient
@@ -95,7 +97,7 @@ const fakeClient = (): PaystackClient =>
 describe("saveSettlement", () => {
   beforeAll(() => {
     process.env.DATABASE_URL = "postgres://gateway:gateway@localhost:5432/gateway"
-    process.env.PAYSTACK_SECRET_KEY = "sk_test"
+    process.env.PAYSTACK_SECRET_KEY = "sk_test_abc"
     process.env.ADMIN_TOKEN = "admin"
     process.env.WEBHOOK_SIGNING_ROOT = "root"
     process.env.SETTLEMENT_CHANGE_COOLDOWN_HOURS = "0"
@@ -139,6 +141,32 @@ describe("saveSettlement", () => {
       "ACME LIMITED",
       "admin",
     ])
+  })
+
+  it("falls back to subaccount validation when test mode resolve is rate-limited", async () => {
+    mockDb()
+    const client = fakeClient()
+
+    vi.mocked(client.resolveAccount).mockRejectedValue(
+      new Error(
+        "Paystack request failed for /bank/resolve: Test mode daily limit of 3 live bank resolves exceeded. Use test bank codes 001 or upgrade to live mode.",
+      ),
+    )
+
+    const settlement = await saveSettlement(client, vendorId, {
+      bank_code: "058",
+      account_number: "0000000001",
+      actor: "admin",
+    })
+
+    expect(client.createSubaccount).toHaveBeenCalledWith({
+      business_name: "Acme Store",
+      settlement_bank: "058",
+      account_number: "0000000001",
+      percentage_charge: 0,
+    })
+    expect(settlement.account_name).toBe("ACME LIMITED")
+    expect(settlement.bank_name).toBe("GTBank")
   })
 
   it("updates the existing subaccount and audits the change", async () => {

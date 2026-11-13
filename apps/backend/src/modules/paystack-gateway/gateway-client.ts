@@ -31,6 +31,15 @@ export type GatewayVerifyResult = {
 export type GatewayBank = {
   name: string
   code: string
+  country?: string
+  currency?: string
+  type?: string
+  active?: boolean
+}
+
+export type GatewayBankList = {
+  data: GatewayBank[]
+  test_mode?: boolean
 }
 
 export type GatewayResolveResult = {
@@ -123,8 +132,8 @@ export class GatewayClient {
     }
   }
 
-  async getBanks(): Promise<{ data: GatewayBank[] }> {
-    return this.request<{ data: GatewayBank[] }>("/v1/banks")
+  async getBanks(): Promise<GatewayBankList> {
+    return this.request<GatewayBankList>("/v1/banks")
   }
 
   async resolveAccount(bankCode: string, accountNumber: string): Promise<GatewayResolveResult> {

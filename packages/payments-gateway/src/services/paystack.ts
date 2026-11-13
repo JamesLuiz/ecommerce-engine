@@ -7,10 +7,12 @@ export type PaystackResolveResponse = {
 }
 
 export type PaystackSubaccount = {
-  account_code: string
+  subaccount_code: string
   percentage_charge: number
   settlement_bank: string
-  bank_account_name?: string | null
+  account_name?: string | null
+  account_number?: string | null
+  bank_id?: number | null
   metadata?: Record<string, unknown> | null
 }
 
@@ -35,10 +37,17 @@ export type PaystackRefundResponse = {
   message?: string
 }
 
+type PaystackMeta = {
+  next?: string | null
+  previous?: string | null
+  perPage?: number
+}
+
 type PaystackEnvelope<T> = {
   data?: T
   message?: string
   status?: boolean
+  meta?: PaystackMeta
 }
 
 export class PaystackClient {
@@ -50,7 +59,10 @@ export class PaystackClient {
     this.baseUrl = baseUrl
   }
 
-  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+  private async requestEnvelope<T>(
+    path: string,
+    init?: RequestInit,
+  ): Promise<PaystackEnvelope<T>> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...init,
       headers: {
@@ -61,7 +73,7 @@ export class PaystackClient {
     })
 
     const payload = (await response.json().catch(() => null)) as
-      | (PaystackEnvelope<T> & { message?: string })
+      | PaystackEnvelope<T>
       | null
 
     if (!response.ok || payload?.status === false) {
@@ -76,27 +88,61 @@ export class PaystackClient {
       throw new Error(`Paystack returned no data for ${path}`)
     }
 
-    return payload.data
+    return payload
   }
 
-  async listBanks(country = "nigeria"): Promise<Bank[]> {
+  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const payload = await this.requestEnvelope<T>(path, init)
+
+    return payload.data as T
+  }
+
+  async listBanks(country = "nigeria", currency?: string): Promise<Bank[]> {
     const perPage = 100
     const banks: Bank[] = []
-    let page = 1
+    const seenCodes = new Set<string>()
+    let next: string | null = null
+    let page = 0
 
-    while (page <= 20) {
-      const batch = await this.request<Bank[]>(
-        `/bank?country=${encodeURIComponent(country)}&perPage=${perPage}&page=${page}`,
-      )
+    // Paystack ignores `page` on /bank and returns the full list every time.
+    // Cursor pagination is the documented way to page through the list, and
+    // the cursor is returned in `meta.next` (see List Banks in the Paystack API docs).
+    do {
+      const query = new URLSearchParams({
+        country,
+        use_cursor: "true",
+        perPage: String(perPage),
+      })
 
-      banks.push(...batch)
-
-      if (batch.length < perPage) {
-        break
+      if (currency) {
+        query.set("currency", currency)
       }
 
+      if (next) {
+        query.set("next", next)
+      }
+
+      const payload = await this.requestEnvelope<Bank[]>(`/bank?${query.toString()}`)
+      const batch = payload.data ?? []
+
+      for (const bank of batch) {
+        if (bank.active === false || bank.is_deleted === true) {
+          continue
+        }
+
+        // Paystack returns a few duplicated codes across the Nigeria list.
+        // Duplicate React keys would make the admin bank picker unusable.
+        if (seenCodes.has(bank.code)) {
+          continue
+        }
+
+        seenCodes.add(bank.code)
+        banks.push(bank)
+      }
+
+      next = payload.meta?.next ?? null
       page += 1
-    }
+    } while (next && page < 20)
 
     return banks
   }
@@ -189,11 +235,25 @@ export class PaystackClient {
     return data
   }
 
-  async getBankName(bankCode: string): Promise<string> {
-    const banks = await this.listBanks()
+  async getBankName(
+    bankCode: string,
+    country = "nigeria",
+    currency?: string,
+  ): Promise<string> {
+    const banks = await this.listBanks(country, currency)
     const bank = banks.find((candidate) => candidate.code === bankCode)
 
-    return bank?.name ?? bankCode
+    if (bank) {
+      return bank.name
+    }
+
+    // Paystack test mode resolves accounts against bank code 001, which is not
+    // part of the live bank list. See "Resolve Account Number" in the Paystack docs.
+    if (bankCode === "001") {
+      return "Test Bank (Paystack test mode)"
+    }
+
+    return bankCode
   }
 
   async verify(reference: string): Promise<PaystackVerifyResponse> {

@@ -96,6 +96,17 @@ export type WebhookEvent = {
 export type Bank = {
   name: string
   code: string
+  id?: number
+  slug?: string
+  longcode?: string
+  country?: string
+  currency?: string
+  type?: string
+  active?: boolean
+  pay_with_bank?: boolean
+  supports_transfer?: boolean
+  available_for_direct_debit?: boolean
+  is_deleted?: boolean
 }
 
 export type CreateVendorInput = {

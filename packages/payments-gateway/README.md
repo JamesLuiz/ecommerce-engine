@@ -59,7 +59,8 @@ the token returned by `POST /admin/vendors`.
   `POST /admin/vendors/:id/rotate-token`, `POST /admin/vendors/:id/suspend`,
   `POST /admin/vendors/:id/activate`, `PATCH /admin/vendors/:id`
   — provisioner only (`ADMIN_TOKEN`)
-- `GET /v1/banks` — vendor token
+- `GET /v1/banks` — vendor token, returns the Paystack bank list for the vendor's
+  currency plus a `test_mode` flag
 - `POST /v1/accounts/resolve` — vendor token, resolves a bank account through
   Paystack `GET /bank/resolve`
 - `GET /v1/settlement`, `PUT /v1/settlement` — vendor token
@@ -73,6 +74,18 @@ the token returned by `POST /admin/vendors`.
 creates or updates the vendor subaccount with `percentage_charge: 0`. Paystack
 receives the plain bank code as `settlement_bank` plus the account number.
 Changes are recorded in `settlement_audit` as `created` or `updated`.
+
+The bank picker calls `GET /v1/banks`, which uses Paystack's cursor pagination
+(`use_cursor=true` + `meta.next`) and deduplicates bank codes. The list is cached
+for 24 hours in Redis when Redis is reachable and in process memory otherwise, so
+a Redis outage does not block settlement setup.
+
+In Paystack test mode, `GET /bank/resolve` is limited to bank code `001`, which
+cannot back a subaccount. When the test-mode limit is hit, `PUT /v1/settlement`
+skips the pre-resolve and lets `POST /subaccount` validate the account; the
+account name is taken from the subaccount response. Live mode always resolves
+first. Replace the test settlement account with a real one before switching to a
+live Paystack key.
 
 `GET /admin/vendors/:id` and `POST /admin/vendors` both return
 `webhook_signing_secret`, the HMAC secret used to sign forwarded webhooks. It is

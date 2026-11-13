@@ -25,7 +25,7 @@ describe("PaystackClient", () => {
     expect(global.fetch).toHaveBeenCalledTimes(1)
   })
 
-  it("paginates the bank list until a short page is returned", async () => {
+  it("paginates the bank list with Paystack cursors", async () => {
     const firstPage = Array.from({ length: 100 }, (_, index) => ({
       name: `Bank ${index}`,
       code: String(index).padStart(3, "0"),
@@ -33,12 +33,24 @@ describe("PaystackClient", () => {
 
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(jsonResponse({ status: true, data: firstPage }))
-      .mockResolvedValueOnce(jsonResponse({ status: true, data: [{ name: "Last Bank", code: "999" }] }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: true,
+          data: firstPage,
+          meta: { next: "cursor-page-2", previous: null, perPage: 100 },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: true,
+          data: [{ name: "Last Bank", code: "999" }],
+          meta: { next: null, previous: "cursor-page-1", perPage: 100 },
+        }),
+      )
 
     global.fetch = fetchMock as unknown as typeof fetch
 
-    const banks = await client().listBanks()
+    const banks = await client().listBanks("nigeria", "NGN")
 
     expect(banks).toHaveLength(101)
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -46,8 +58,27 @@ describe("PaystackClient", () => {
     const [firstUrl] = fetchMock.mock.calls[0] as [string]
     const [secondUrl] = fetchMock.mock.calls[1] as [string]
 
-    expect(firstUrl).toContain("page=1")
-    expect(secondUrl).toContain("page=2")
+    expect(firstUrl).toContain("use_cursor=true")
+    expect(firstUrl).toContain("currency=NGN")
+    expect(secondUrl).toContain("next=cursor-page-2")
+  })
+
+  it("drops inactive, deleted, and duplicate bank codes", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: true,
+        data: [
+          { name: "GTBank", code: "058", active: true },
+          { name: "GTBank duplicate", code: "058", active: true },
+          { name: "Closed Bank", code: "999", active: false },
+          { name: "Deleted Bank", code: "998", is_deleted: true },
+        ],
+      }),
+    ) as unknown as typeof fetch
+
+    const banks = await client().listBanks()
+
+    expect(banks).toEqual([{ name: "GTBank", code: "058", active: true }])
   })
 
   it("resolves an account through the Paystack resolve endpoint", async () => {
@@ -87,6 +118,29 @@ describe("PaystackClient", () => {
     await expect(client().resolveAccount("058", "0123456789")).rejects.toThrow(
       "Could not resolve account name",
     )
+  })
+
+  it("reads the subaccount code from the Paystack subaccount response", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: true,
+        data: {
+          subaccount_code: "ACCT_123",
+          percentage_charge: 0,
+          settlement_bank: "GTBank",
+          account_name: "ACME LIMITED",
+        },
+      }),
+    ) as unknown as typeof fetch
+
+    const created = await client().createSubaccount({
+      business_name: "Acme Store",
+      settlement_bank: "058",
+      account_number: "0123456789",
+      percentage_charge: 0,
+    })
+
+    expect(created.subaccount_code).toBe("ACCT_123")
   })
 
   it("initializes a transaction", async () => {
