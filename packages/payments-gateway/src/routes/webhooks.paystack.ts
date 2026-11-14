@@ -3,6 +3,7 @@ import type { Context } from "hono"
 import { createHash, createHmac, timingSafeEqual } from "node:crypto"
 import { db } from "../db.js"
 import { webhookForwardQueue } from "../jobs/queue.js"
+import { notifyControlPlaneOrderPaid } from "../services/controlPlane.js"
 import { computeWebhookSignature, webhookSecretFor } from "../services/crypto.js"
 import { updateTransaction } from "../services/transactions.js"
 import { findVendorById } from "../services/vendors.js"
@@ -113,7 +114,15 @@ webhooksRouter.post("/paystack", async (c: Context) => {
   })
 
   if (transaction) {
+    const justSucceeded =
+      event === "charge.success" &&
+      (transaction.status === "pending" || transaction.status === "failed")
+
     await applyWebhookEventToTransaction(transaction, event, payload)
+
+    if (justSucceeded) {
+      await notifyControlPlaneOrderPaid(transaction.reference)
+    }
   }
 
   const vendor = await findVendorById(resolvedVendorId)

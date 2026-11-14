@@ -1,5 +1,3 @@
-import { Text } from "@modules/common/components/ui"
-
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import StoreBrand from "@modules/layout/components/store-brand"
@@ -38,9 +36,12 @@ export default function CheckoutLayout({
       </div>
       <div className="relative" data-testid="checkout-container">{children}</div>
       <div className="py-4 w-full flex items-center justify-center">
-        <Text className="txt-compact-small text-ui-fg-base">
+        <LocalizedClientLink
+          href="/platform"
+          className="txt-compact-small text-ui-fg-base hover:text-ui-fg-subtle transition-colors"
+        >
           Powered by Flowcheq Commerce
-        </Text>
+        </LocalizedClientLink>
       </div>
     </div>
   )

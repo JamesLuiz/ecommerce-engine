@@ -62,9 +62,12 @@ export default function Footer() {
         <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
           <Text className="txt-compact-small" />
           {poweredBy && (
-            <Text className="txt-compact-small text-ui-fg-base">
+            <LocalizedClientLink
+              href="/platform"
+              className="txt-compact-small text-ui-fg-base hover:text-ui-fg-subtle transition-colors"
+            >
               Powered by Flowcheq Commerce
-            </Text>
+            </LocalizedClientLink>
           )}
         </div>
       </div>

@@ -6,6 +6,9 @@ from the container environment at request time, never baked in at build time.
 
 ## Runtime configuration
 
+Copy `apps/storefront/.env.template` to `.env.local` for local development. The
+provisioner injects the same variables into each tenant's Coolify application.
+
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `MEDUSA_BACKEND_URL` | yes | Base URL of this tenant's Medusa backend |

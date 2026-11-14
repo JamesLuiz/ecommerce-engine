@@ -52,6 +52,12 @@ Point the Paystack dashboard webhook at `https://<gateway-host>/webhooks/paystac
 Never put `PAYSTACK_SECRET_KEY` in a vendor Medusa instance; vendors only hold
 the token returned by `POST /admin/vendors`.
 
+When `DASHBOARD_URL` and `ORDER_WEBHOOK_SECRET` are set, a successful
+`charge.success` also calls the dashboard internal endpoint
+`POST /api/internal/orders/by-reference/:reference/paid`, which marks the
+matching plan order paid and queues tenant provisioning. Without them, tenant
+checkout payments still work; they just never trigger a deployment.
+
 ## Endpoints
 
 - `GET /healthz`

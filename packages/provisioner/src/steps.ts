@@ -126,6 +126,7 @@ function buildBackendEnv(ctx: ProvisionStepContext, tenantConfig: TenantConfig):
     DB_POOL_MAX: "5",
     NODE_ENV: "production",
     MEDUSA_ADMIN_BACKEND_URL: adminUrl,
+    STOREFRONT_URL: storeUrl,
   }
 
   if (process.env.GATEWAY_URL) {
@@ -138,6 +139,12 @@ function buildBackendEnv(ctx: ProvisionStepContext, tenantConfig: TenantConfig):
 
   if (ctx.secrets?.gatewayWebhookSecret) {
     env.GATEWAY_WEBHOOK_SECRET = ctx.secrets.gatewayWebhookSecret
+  }
+
+  if (process.env.BREVO_API_KEY) {
+    env.BREVO_API_KEY = process.env.BREVO_API_KEY
+    env.BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL ?? ""
+    env.BREVO_FROM_NAME = process.env.BREVO_FROM_NAME ?? ""
   }
 
   return env
