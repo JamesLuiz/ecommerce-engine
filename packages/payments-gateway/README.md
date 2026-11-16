@@ -14,6 +14,42 @@ The image runs three entrypoints from the same build:
 The API and the worker are separate processes. Running only the API means
 webhooks are received and stored but never forwarded to vendors.
 
+## Deploy on Coolify
+
+Do not deploy the gateway on Coolify through `docker-compose.yml`: Coolify sets
+the compose project directory to the repository root, which breaks the file's
+relative build context (`lstat /infra: no such file or directory`).
+
+Instead, create two **Dockerfile** build-pack applications from the same
+repository and branch, both with dockerfile path `infra/docker/gateway.Dockerfile`:
+
+- **gateway** — default start command (`node dist/index.js`), port 8080,
+  health-check path `/healthz`, domain `gateway.example.com`.
+- **gateway-worker** — start command `dist/worker.js`, no port and no domain.
+
+Run migrations on every API start by setting the gateway's start command to
+`node dist/migrate.js && node dist/index.js`. The migration is idempotent, so
+redeploying is safe. (Alternatively, keep the default start command and run
+`node dist/migrate.js` once per release from any machine with database access.)
+
+Environment variables, defined in the Coolify UI with **"Available at Build
+Time" unchecked** (they are runtime-only; the image already sets `NODE_ENV` and
+`PORT`, and keeping secrets out of the build avoids them appearing in build
+logs):
+
+| Variable | Notes |
+| --- | --- |
+| `DATABASE_URL`, `REDIS_URL` | the platform's Postgres and Redis |
+| `PAYSTACK_SECRET_KEY`, `PAYSTACK_BASE_URL` | master account |
+| `ADMIN_TOKEN` | must match `PAYMENTS_GATEWAY_ADMIN_TOKEN` in the root `.env` |
+| `WEBHOOK_SIGNING_ROOT` | root key for vendor webhook secrets |
+| `DASHBOARD_URL`, `ORDER_WEBHOOK_SECRET` | marks plan orders paid on `charge.success` |
+| `LOG_LEVEL`, `REFUNDS_ENABLED`, `SETTLEMENT_CHANGE_COOLDOWN_HOURS` | optional |
+
+Apps in the same Coolify project and environment share a Docker network, so
+`DASHBOARD_URL` can use the dashboard application's name as the host (for
+example `http://dashboard:9000`) instead of a public domain.
+
 ## Run
 
 All configuration comes from `.env`; the compose file declares no variables of

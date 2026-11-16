@@ -324,7 +324,7 @@ curl -fsS http://localhost:8080/healthz
 
 The compose stack runs migrations once, then starts the API and the worker as separate services. The `gateway` service exposes port 8080. The `worker` service receives no inbound traffic.
 
-The compose file declares no environment variables; `DATABASE_URL` and `REDIS_URL` come from `.env` as-is and point at the Postgres and Redis the platform runs on.
+The compose file declares no environment variables; `DATABASE_URL` and `REDIS_URL` come from `.env` as-is and point at the Postgres and Redis the platform runs on. This compose file is for local development only — on Coolify, deploy the gateway as Dockerfile applications instead (see `packages/payments-gateway/README.md`, "Deploy on Coolify").
 
 ### 2.3 Run against managed Postgres and Redis
 
