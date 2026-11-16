@@ -1,0 +1,17 @@
+name: flowcheq-storefront
+
+# One tenant's Next.js storefront. Branding, backend URL and publishable key
+# are read from the env file at request time (see .env.template); the same
+# image serves every tenant.
+#
+#   STOREFRONT_IMAGE=ghcr.io/acme/flowcheq-commerce/storefront:latest docker compose up -d
+#   docker compose logs -f
+#
+# The image ships a /health healthcheck that compose picks up automatically.
+
+services:
+  storefront:
+    image: ${STOREFRONT_IMAGE:-ghcr.io/flowcheq/storefront:latest}
+    env_file: ${STOREFRONT_ENV_FILE:-.env.local}
+    ports: ["${STOREFRONT_PORT:-8000}:3000"]
+    restart: unless-stopped

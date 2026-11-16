@@ -1,0 +1,15 @@
+name: flowcheq-worker
+
+# BullMQ worker that consumes the provision and deprovision queues.
+# No inbound port; it needs the full root .env: control-plane database, Redis,
+# Coolify credentials and the tenant-platform variables (STORE_BASE_DOMAIN,
+# TENANT_PG_*, GATEWAY_URL, PAYMENTS_GATEWAY_ADMIN_TOKEN, BREVO_*).
+#
+#   docker compose up -d
+#   docker compose logs -f
+
+services:
+  worker:
+    image: ${WORKER_IMAGE:-ghcr.io/flowcheq/worker:latest}
+    env_file: ${WORKER_ENV_FILE:-../../.env}
+    restart: unless-stopped

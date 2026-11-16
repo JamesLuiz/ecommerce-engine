@@ -1,0 +1,19 @@
+name: flowcheq-backend
+
+# One tenant's Medusa backend. Every tenant-specific value (database URL, CORS,
+# secrets, TENANT_CONFIG, gateway credentials) comes from the env file; see
+# .env.template for the full list. The image entrypoint runs migrations and the
+# idempotent tenant bootstrap before starting, so `up -d` after an image
+# upgrade also applies schema changes.
+#
+#   BACKEND_IMAGE=ghcr.io/acme/flowcheq-commerce/backend:latest docker compose up -d
+#   docker compose logs -f
+#
+# The image ships a /health healthcheck that compose picks up automatically.
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/flowcheq/backend:latest}
+    env_file: ${BACKEND_ENV_FILE:-.env}
+    ports: ["${BACKEND_PORT:-9000}:9000"]
+    restart: unless-stopped

@@ -1,5 +1,8 @@
 import { cookies } from "next/headers"
+import { eq } from "drizzle-orm"
 
+import { db } from "@lib/db"
+import { customers } from "@flowcheq/db"
 import { getStaffCustomer, STAFF_SESSION_COOKIE } from "./auth"
 
 export interface StaffSession {
@@ -22,4 +25,18 @@ export async function getStaffSession(): Promise<StaffSession | null> {
   }
 
   return customer
+}
+
+/**
+ * True once any staff account exists. Drives the first-run setup redirect:
+ * the login page sends visitors to /setup while this is false.
+ */
+export async function staffAccountExists(): Promise<boolean> {
+  const rows = await db
+    .select({ id: customers.id })
+    .from(customers)
+    .where(eq(customers.role, "staff"))
+    .limit(1)
+
+  return rows.length > 0
 }

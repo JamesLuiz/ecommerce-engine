@@ -1,0 +1,28 @@
+name: flowcheq-dashboard
+
+# Staff control-plane dashboard: tenants, orders, jobs, releases and audit.
+# Runs against external Postgres and Redis configured in the root .env
+# (CONTROL_PLANE_DATABASE_URL, REDIS_URL).
+#
+#   docker compose up -d
+#
+# The migrate service applies control-plane schema changes with the drizzle-kit
+# bundled in the image; the dashboard starts only after it succeeds. Re-run
+# `docker compose up -d` after every image upgrade.
+
+services:
+  migrate:
+    image: ${DASHBOARD_IMAGE:-ghcr.io/flowcheq/dashboard:latest}
+    working_dir: /app/packages/db
+    command: ["npx", "--no-install", "drizzle-kit", "migrate"]
+    env_file: ${DASHBOARD_ENV_FILE:-../../.env}
+    restart: "no"
+
+  dashboard:
+    image: ${DASHBOARD_IMAGE:-ghcr.io/flowcheq/dashboard:latest}
+    env_file: ${DASHBOARD_ENV_FILE:-../../.env}
+    ports: ["${DASHBOARD_PORT:-9000}:9000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped

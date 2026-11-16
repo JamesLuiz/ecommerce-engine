@@ -462,7 +462,23 @@ docker build -f infra/docker/worker.Dockerfile \
 
 ### 4.2 Run the containers
 
-The dashboard and worker both read the root `.env`. Pass it with `--env-file`.
+The dashboard and worker both read the root `.env`. Each app ships a compose
+file that wires the env file, the migration job and the healthcheck:
+
+```bash
+cd apps/dashboard
+DASHBOARD_IMAGE=ghcr.io/acme/flowcheq-commerce/dashboard:latest docker compose up -d
+
+cd ../worker
+WORKER_IMAGE=ghcr.io/acme/flowcheq-commerce/worker:latest docker compose up -d
+```
+
+Run from a repository checkout: the compose files default to `../../.env` for
+the env file, or point `DASHBOARD_ENV_FILE` / `WORKER_ENV_FILE` at a copy on the
+server. The dashboard compose runs the control-plane migration (Step 3) before
+starting, so with compose you can skip the manual migration run.
+
+Without compose, pass `.env` with `--env-file`:
 
 ```bash
 docker run -d --name flowcheq-dashboard \
@@ -494,19 +510,21 @@ You should see `"message":"provisioning worker started"`.
 
 ### 4.3 Create the first staff account
 
-Staff accounts live in the `customers` table with `role = 'staff'`. Run the script inside the dashboard container:
+Open `https://dashboard.example.com`. The login page redirects to `/setup` while
+no staff account exists. Fill in name, email and a password of at least 12
+characters; the form creates the first staff account, signs you in and locks
+itself permanently. It is the only public way to create an account and can be
+used exactly once.
 
-```bash
-docker exec -it flowcheq-dashboard \
-  npm run staff:create -- --email you@example.com --name "Your Name"
-```
-
-The password is prompted and must be at least 12 characters. For automation, pass `STAFF_PASSWORD` in the environment:
+For automation, a lost password, or extra staff later, use the script instead:
 
 ```bash
 docker exec -it -e STAFF_PASSWORD='at-least-12-chars' flowcheq-dashboard \
   npm run staff:create -- --email you@example.com --name "Your Name"
 ```
+
+Do not leave the dashboard exposed before completing setup: until the first
+account exists, anyone who reaches `/setup` can create that account.
 
 Alternatively, run it from a local checkout against the production database:
 
@@ -889,6 +907,13 @@ docker run -d --name acme-backend \
   ghcr.io/acme/flowcheq-commerce/backend:latest
 ```
 
+Or with compose, from the repository checkout:
+
+```bash
+cd apps/backend
+BACKEND_IMAGE=ghcr.io/acme/flowcheq-commerce/backend:latest docker compose up -d
+```
+
 The container runs migrations and the idempotent bootstrap before starting. Wait for:
 
 ```bash
@@ -920,6 +945,14 @@ docker run -d --name acme-storefront \
   -e STORE_DEFAULT_REGION='ng' \
   -e STORE_BASE_URL='https://acme.example.store' \
   ghcr.io/acme/flowcheq-commerce/storefront:latest
+```
+
+Or with compose, from the repository checkout (the env file defaults to
+`apps/storefront/.env.local`):
+
+```bash
+cd apps/storefront
+STOREFRONT_IMAGE=ghcr.io/acme/flowcheq-commerce/storefront:latest docker compose up -d
 ```
 
 `MEDUSA_BACKEND_URL` is the backend's public URL, which is the `admin-` hostname in the standard layout. Do not point it at the storefront hostname.

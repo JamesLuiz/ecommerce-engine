@@ -73,6 +73,14 @@ docker run -d --name flowcheq-dashboard \
   ghcr.io/acme/flowcheq-commerce/dashboard:latest
 ```
 
+Or with compose, from the repository checkout. It runs the control-plane
+migration before starting the dashboard:
+
+```bash
+cd apps/dashboard
+DASHBOARD_IMAGE=ghcr.io/acme/flowcheq-commerce/dashboard:latest docker compose up -d
+```
+
 The dashboard container listens on port 9000. Local `npm run dev` uses port 3000;
 production images always use 9000.
 
@@ -87,16 +95,30 @@ curl -fsS http://localhost:9000/api/health
 docker logs --tail 50 flowcheq-dashboard
 ```
 
-### 1.6 Create a staff account and log in
+### 1.6 Create the first staff account and log in
+
+Open `https://dashboard.example.com` after deployment. The login page redirects
+to `/setup` while no staff account exists. Fill in name, email and a password of
+at least 12 characters (with confirmation); submitting creates the first staff
+account, signs you in immediately and locks the setup form for good.
+
+The form is the only public way to create an account and can be used exactly
+once: the setup endpoint refuses once any staff account exists, and concurrent
+submissions are serialized by a database advisory lock so two requests can
+never both win.
+
+For automation, a lost password, or extra staff later, use the script from a
+machine with database access:
 
 ```bash
 docker exec -it -e STAFF_PASSWORD='at-least-12-chars' flowcheq-dashboard \
   npm run staff:create -- --email you@example.com --name "Your Name"
 ```
 
-Log in at `https://dashboard.example.com/login`. Requests to `/admin` without a
-staff session are redirected to `/login`, and accounts whose role is not `staff`
-are rejected.
+Do not leave the dashboard exposed on the public internet before completing
+setup: until the first account exists, anyone who reaches `/setup` can create
+that account. Requests to `/admin` without a staff session are redirected to
+`/login`, and accounts whose role is not `staff` are rejected.
 
 ## Step 2: Automatically deploy a store after the customer has paid
 
