@@ -324,7 +324,7 @@ curl -fsS http://localhost:8080/healthz
 
 The compose stack runs migrations once, then starts the API and the worker as separate services. The `gateway` service exposes port 8080. The `worker` service receives no inbound traffic.
 
-The compose file declares no environment variables; `DATABASE_URL` and `REDIS_URL` come from `.env` as-is. Point them at your managed services, or add the bundled `pg` and `redis` containers with `--profile bundled` and point the URLs at the `pg`/`redis` service names instead.
+The compose file declares no environment variables; `DATABASE_URL` and `REDIS_URL` come from `.env` as-is and point at the Postgres and Redis the platform runs on.
 
 ### 2.3 Run against managed Postgres and Redis
 

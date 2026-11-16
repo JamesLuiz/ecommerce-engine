@@ -1,20 +1,10 @@
 name: flowcheq-payments-gateway
 
 # All configuration comes from .env next to this file; this file declares no
-# environment variables of its own.
+# environment variables of its own. Point DATABASE_URL and REDIS_URL in .env
+# at the Postgres and Redis the platform runs on (Coolify-managed or other):
 #
-# External Postgres/Redis (default): point DATABASE_URL and REDIS_URL in .env
-# at the real hosts, then:
 #   docker compose up -d
-#
-# Bundled Postgres/Redis (self-contained box): enable the profile and point
-# the URLs at the service names in .env:
-#   DATABASE_URL=postgres://gateway:<PG_PASSWORD>@pg:5432/gateway
-#   REDIS_URL=redis://redis:6379/0
-#   docker compose --profile bundled up -d
-#
-# PG_PASSWORD is read from .env by compose interpolation for the bundled pg
-# service; it never appears in this file.
 
 services:
   migrate:
@@ -24,10 +14,6 @@ services:
     image: flowcheq/payments-gateway:local
     command: ["dist/migrate.js"]
     env_file: .env
-    depends_on:
-      pg:
-        condition: service_healthy
-        required: false
     restart: "no"
 
   gateway:
@@ -40,12 +26,6 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-      pg:
-        condition: service_healthy
-        required: false
-      redis:
-        condition: service_healthy
-        required: false
     restart: unless-stopped
 
   worker:
@@ -58,38 +38,4 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-      pg:
-        condition: service_healthy
-        required: false
-      redis:
-        condition: service_healthy
-        required: false
     restart: unless-stopped
-
-  pg:
-    profiles: ["bundled"]
-    image: postgres:16
-    environment:
-      POSTGRES_DB: gateway
-      POSTGRES_USER: gateway
-      POSTGRES_PASSWORD: ${PG_PASSWORD:?PG_PASSWORD must be set in .env}
-    volumes: [pgdata:/var/lib/postgresql/data]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gateway -d gateway"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-    restart: unless-stopped
-
-  redis:
-    profiles: ["bundled"]
-    image: redis:7
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
-    restart: unless-stopped
-
-volumes:
-  pgdata: {}
