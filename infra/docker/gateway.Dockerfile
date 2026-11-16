@@ -17,7 +17,14 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json package-lock.json ./
-COPY --parents apps/*/package.json packages/*/package.json ./
+COPY apps/backend/package.json apps/backend/package.json
+COPY apps/storefront/package.json apps/storefront/package.json
+COPY apps/dashboard/package.json apps/dashboard/package.json
+COPY apps/worker/package.json apps/worker/package.json
+COPY packages/tenant-config/package.json packages/tenant-config/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/provisioner/package.json packages/provisioner/package.json
+COPY packages/payments-gateway/package.json packages/payments-gateway/package.json
 RUN npm ci --ignore-scripts --no-audit --no-fund
 
 FROM deps AS builder
