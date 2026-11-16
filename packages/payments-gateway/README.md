@@ -16,11 +16,23 @@ webhooks are received and stored but never forwarded to vendors.
 
 ## Run
 
-Docker compose (Postgres + Redis + migrations + API + worker):
+All configuration comes from `.env`; the compose file declares no variables of
+its own. Point `DATABASE_URL` and `REDIS_URL` at your Postgres and Redis.
+
+External Postgres and Redis:
 
 ```bash
 cp .env.example .env
 docker compose up -d --build
+```
+
+Self-contained box (bundled `pg` and `redis` services, URLs pointing at the
+`pg`/`redis` service names):
+
+```bash
+cp .env.example .env
+# edit DATABASE_URL/REDIS_URL to the service-name form shown in .env.example
+docker compose --profile bundled up -d --build
 ```
 
 Locally, against your own Postgres and Redis:

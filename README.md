@@ -311,9 +311,9 @@ SETTLEMENT_CHANGE_COOLDOWN_HOURS=0
 
 `ADMIN_TOKEN` must match `PAYMENTS_GATEWAY_ADMIN_TOKEN` in the root `.env`. `ORDER_WEBHOOK_SECRET` must match the same variable in the root `.env`.
 
-### 2.2 Run with the bundled Postgres and Redis
+### 2.2 Run with compose
 
-The package ships a compose file for a self-contained deployment:
+The package ships a compose file:
 
 ```bash
 cd packages/payments-gateway
@@ -324,7 +324,7 @@ curl -fsS http://localhost:8080/healthz
 
 The compose stack runs migrations once, then starts the API and the worker as separate services. The `gateway` service exposes port 8080. The `worker` service receives no inbound traffic.
 
-The compose file overrides `DATABASE_URL` and `REDIS_URL` to point at its own `pg` and `redis` services. To use managed services instead, skip compose and use the commands below.
+The compose file declares no environment variables; `DATABASE_URL` and `REDIS_URL` come from `.env` as-is. Point them at your managed services, or add the bundled `pg` and `redis` containers with `--profile bundled` and point the URLs at the `pg`/`redis` service names instead.
 
 ### 2.3 Run against managed Postgres and Redis
 
