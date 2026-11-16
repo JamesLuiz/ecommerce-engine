@@ -22,6 +22,7 @@ RUN npm ci
 
 FROM deps AS builder
 COPY packages/tenant-config packages/tenant-config
+RUN npm run build --workspace=@flowcheq/tenant-config
 COPY packages/db packages/db
 RUN npm run build --workspace=@flowcheq/db
 COPY apps/dashboard apps/dashboard
