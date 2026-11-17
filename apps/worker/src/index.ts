@@ -72,7 +72,10 @@ export async function createProvisionWorker(
   params: CreateProvisionWorkerParams = {}
 ): Promise<Worker<ProvisionJobData>> {
   const queueName = params.queueName ?? PROVISION_QUEUE_NAME
-  const connection = params.connection ?? new Redis(process.env.REDIS_URL ?? "redis://localhost:6379")
+  // maxRetriesPerRequest: null is a BullMQ requirement.
+  const connection =
+    params.connection ??
+    new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", { maxRetriesPerRequest: null })
   const provisionProcessor = params.runProvisioningJob ?? defaultProvisionRunner
   const deprovisionProcessor = params.runDeprovisioningJob ?? defaultDeprovisionRunner
 

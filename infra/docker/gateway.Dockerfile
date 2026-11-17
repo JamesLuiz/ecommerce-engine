@@ -41,7 +41,10 @@ ENV NODE_ENV=production
 ENV PORT=8080
 
 RUN groupadd --system --gid 1001 nodejs \
-  && useradd --system --uid 1001 --gid nodejs gateway
+  && useradd --system --uid 1001 --gid nodejs gateway \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
