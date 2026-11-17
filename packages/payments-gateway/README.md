@@ -20,17 +20,18 @@ Do not deploy the gateway on Coolify through `docker-compose.yml`: Coolify sets
 the compose project directory to the repository root, which breaks the file's
 relative build context (`lstat /infra: no such file or directory`).
 
-Instead, create two **Dockerfile** build-pack applications from the same
-repository and branch, both with dockerfile path `infra/docker/gateway.Dockerfile`:
+Instead, create one **Dockerfile** build-pack application from the repository
+and branch, with dockerfile path `infra/docker/gateway.Dockerfile`:
 
-- **gateway** — default start command (`node dist/index.js`), port 8080,
-  health-check path `/healthz`, domain `gateway.example.com`.
-- **gateway-worker** — start command `dist/worker.js`, no port and no domain.
+- **gateway** — port 8080, health-check path `/healthz`, domain
+  `gateway.example.com`. No start command needed.
 
-Run migrations on every API start by setting the gateway's start command to
-`node dist/migrate.js && node dist/index.js`. The migration is idempotent, so
-redeploying is safe. (Alternatively, keep the default start command and run
-`node dist/migrate.js` once per release from any machine with database access.)
+The image's entrypoint handles the rest: it runs the idempotent migrations,
+then starts the BullMQ worker and the HTTP API in the same container. If
+either process exits, the whole container exits and Coolify restarts it, so
+both halves always come back together. Redeploying is safe. (The compose file
+still runs API, worker and migrations as three separate services for local
+development — with arguments the entrypoint just execs `node <args>`.)
 
 Environment variables, defined in the Coolify UI with **"Available at Build
 Time" unchecked** (they are runtime-only; the image already sets `NODE_ENV` and

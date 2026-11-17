@@ -7,9 +7,13 @@
 #   docker build -f infra/docker/gateway.Dockerfile -t flowcheq/payments-gateway .
 #
 # The same image runs three entrypoints:
-#   node dist/index.js     HTTP API (default)
-#   node dist/worker.js    BullMQ workers (webhook forwarding, reconciliation)
-#   node dist/migrate.js   one-shot database migrations
+#   gateway-entrypoint          default: migrate, then API + worker in one
+#                               container (the Coolify deployment shape)
+#   node dist/index.js          HTTP API only
+#   node dist/worker.js         BullMQ workers (webhook forwarding, reconciliation)
+#   node dist/migrate.js        one-shot database migrations
+# Any argument is exec'd as `node <args>`, so docker compose can still run
+# the three processes as separate services.
 
 FROM node:22-bookworm-slim AS base
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -47,10 +51,13 @@ COPY --chown=gateway:nodejs --from=builder /app/packages/payments-gateway/migrat
 COPY --chown=gateway:nodejs --from=builder /app/packages/payments-gateway/package.json ./package.json
 
 USER gateway
+COPY gateway-entrypoint /usr/local/bin/gateway-entrypoint
+RUN chmod +x /usr/local/bin/gateway-entrypoint
+
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 8080) + '/healthz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-ENTRYPOINT ["node"]
-CMD ["dist/index.js"]
+ENTRYPOINT ["/usr/local/bin/gateway-entrypoint"]
+CMD []

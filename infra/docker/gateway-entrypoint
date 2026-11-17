@@ -1,0 +1,37 @@
+#!/bin/bash
+# Entrypoint for the Flowcheq payments gateway image.
+#
+#   with arguments  -> exec node <args> (dist/migrate.js, dist/worker.js, ...)
+#                      used by docker compose, which runs the API, worker and
+#                      migrations as separate services
+#   with no arguments -> run migrations, then run the worker and the HTTP API
+#                      in one container (the Coolify deployment shape, which
+#                      has no start-command override for Dockerfile apps)
+set -euo pipefail
+
+if [ "$#" -gt 0 ]; then
+  exec node "$@"
+fi
+
+node dist/migrate.js
+
+node dist/worker.js &
+worker_pid=$!
+node dist/index.js &
+api_pid=$!
+
+shutdown() {
+  trap - TERM INT
+  kill -TERM "$worker_pid" "$api_pid" 2>/dev/null || true
+  wait "$worker_pid" "$api_pid" 2>/dev/null || true
+  exit 0
+}
+trap shutdown TERM INT
+
+while kill -0 "$worker_pid" 2>/dev/null && kill -0 "$api_pid" 2>/dev/null; do
+  sleep 1
+done
+
+# Either child exited: shut the rest down so the platform restarts the
+# container as a whole instead of running half a gateway.
+shutdown
