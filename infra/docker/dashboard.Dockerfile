@@ -33,7 +33,10 @@ ENV NODE_ENV=production
 ENV PORT=9000
 
 RUN groupadd --system --gid 1001 nodejs \
-  && useradd --system --uid 1001 --gid nodejs nextjs
+  && useradd --system --uid 1001 --gid nodejs nextjs \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -44,11 +47,12 @@ COPY --chown=nextjs:nodejs --from=builder /app/apps/dashboard/.next ./apps/dashb
 COPY --chown=nextjs:nodejs --from=builder /app/apps/dashboard/package.json ./apps/dashboard/package.json
 COPY --chown=nextjs:nodejs --from=builder /app/apps/dashboard/next.config.js ./apps/dashboard/next.config.js
 
-WORKDIR /app/apps/dashboard
 USER nextjs
+COPY --chmod=755 infra/docker/dashboard-entrypoint /usr/local/bin/dashboard-entrypoint
 EXPOSE 9000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 9000) + '/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-CMD ["/app/node_modules/.bin/next", "start", "-p", "9000"]
+ENTRYPOINT ["/usr/local/bin/dashboard-entrypoint"]
+CMD []

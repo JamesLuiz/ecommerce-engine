@@ -1,0 +1,17 @@
+#!/bin/bash
+# Entrypoint for the Flowcheq staff dashboard image.
+#
+#   with arguments  -> exec <args> (used by docker compose, which runs the
+#                      drizzle migration as a separate one-shot service)
+#   with no arguments -> apply control-plane migrations, then start Next.js
+set -euo pipefail
+
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+fi
+
+cd /app/packages/db
+npx --no-install drizzle-kit migrate
+
+cd /app/apps/dashboard
+exec /app/node_modules/.bin/next start -p "${PORT:-9000}"
