@@ -51,8 +51,7 @@ COPY --chown=gateway:nodejs --from=builder /app/packages/payments-gateway/migrat
 COPY --chown=gateway:nodejs --from=builder /app/packages/payments-gateway/package.json ./package.json
 
 USER gateway
-COPY infra/docker/gateway-entrypoint /usr/local/bin/gateway-entrypoint
-RUN chmod +x /usr/local/bin/gateway-entrypoint
+COPY --chmod=755 infra/docker/gateway-entrypoint /usr/local/bin/gateway-entrypoint
 
 EXPOSE 8080
 
