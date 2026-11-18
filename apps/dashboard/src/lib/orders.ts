@@ -15,6 +15,12 @@ export interface MarkOrderPaidResult {
   alreadyPaid?: boolean
 }
 
+export interface MarkOrderFulfilledResult {
+  ok: true
+  orderId: string
+  alreadyFulfilled?: boolean
+}
+
 export interface MarkOrderPaidOptions {
   actor?: string
 }
@@ -94,4 +100,37 @@ export async function markOrderPaid(
   })
 
   return { ok: true, orderId: order.id, tenantId, jobId }
+}
+
+/**
+ * Marks an order fulfilled. Safe to call repeatedly: an already fulfilled order
+ * returns early.
+ */
+export async function markOrderFulfilled(
+  orderId: string,
+  options: { actor?: string } = {}
+): Promise<MarkOrderFulfilledResult | null> {
+  const orderRows = await db.select().from(orders).where(eq(orders.id, orderId))
+  const order = orderRows[0]
+
+  if (!order) {
+    return null
+  }
+
+  if (order.fulfilled_at) {
+    return { ok: true, orderId: order.id, alreadyFulfilled: true }
+  }
+
+  await db
+    .update(orders)
+    .set({ fulfilled_at: new Date() })
+    .where(eq(orders.id, order.id))
+
+  await recordAudit({
+    actor: options.actor ?? "staff",
+    action: "order.fulfilled",
+    meta: { orderId: order.id },
+  })
+
+  return { ok: true, orderId: order.id }
 }

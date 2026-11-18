@@ -2,10 +2,10 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { getStaffSession } from "@lib/staff"
-import { markOrderPaid } from "@lib/orders"
+import { markOrderFulfilled, markOrderPaid } from "@lib/orders"
 
 const OrderActionBody = z.object({
-  action: z.literal("mark_paid"),
+  action: z.enum(["mark_paid", "mark_fulfilled"]),
 })
 
 export async function POST(
@@ -26,7 +26,11 @@ export async function POST(
   }
 
   const { id } = await params
-  const result = await markOrderPaid(id, { actor: staff.email })
+
+  const result =
+    parsed.data.action === "mark_paid"
+      ? await markOrderPaid(id, { actor: staff.email })
+      : await markOrderFulfilled(id, { actor: staff.email })
 
   if (!result) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 })

@@ -56,6 +56,10 @@ ${links.join("\n")}
 - [Privacy policy](${base}/privacy)
 - [Contact](${base}/contact)
 
+## Platform
+- [About Flowcheq Commerce](${base}/platform)
+- [Get your own online store](${base}/online-store)
+
 ## For agents
 - [Sitemap](${origin}/sitemap.xml)
 - [UCP profile](${origin}/.well-known/ucp)

@@ -39,6 +39,7 @@ export default async function OrdersPage() {
       signup_payload: orders.signup_payload,
       created_at: orders.created_at,
       paid_at: orders.paid_at,
+      fulfilled_at: orders.fulfilled_at,
     })
     .from(orders)
     .innerJoin(customers, eq(orders.customer_id, customers.id))
@@ -96,7 +97,8 @@ export default async function OrdersPage() {
                 <th className="px-4 py-3">Reference</th>
                 <th className="px-4 py-3">Amount</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Paid / action</th>
+                <th className="px-4 py-3">Fulfillment</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -123,17 +125,27 @@ export default async function OrdersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={order.status} />
+                      {order.paid_at ? (
+                        <div className="mt-1 text-xs text-gray-500">
+                          Paid {order.paid_at.toISOString().slice(0, 16).replace("T", " ")}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
-                      {order.status === "paid" ? (
-                        <span className="text-xs text-gray-500">
-                          {order.paid_at
-                            ? order.paid_at.toISOString().slice(0, 16).replace("T", " ")
-                            : "-"}
+                      {order.fulfilled_at ? (
+                        <span className="text-xs text-green-700">
+                          Fulfilled {order.fulfilled_at.toISOString().slice(0, 16).replace("T", " ")}
                         </span>
                       ) : (
-                        <OrderActions orderId={order.id} />
+                        <span className="text-xs text-gray-500">Not fulfilled</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <OrderActions
+                        orderId={order.id}
+                        status={order.status}
+                        fulfilled={Boolean(order.fulfilled_at)}
+                      />
                     </td>
                   </tr>
                 )

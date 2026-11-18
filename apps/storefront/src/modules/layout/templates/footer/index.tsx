@@ -59,15 +59,22 @@ export default function Footer() {
           )}
         </div>
 
-        <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
-          <Text className="txt-compact-small" />
+        <div className="mb-16 flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 text-ui-fg-muted">
           {poweredBy && (
-            <LocalizedClientLink
-              href="/platform"
-              className="txt-compact-small text-ui-fg-base hover:text-ui-fg-subtle transition-colors"
-            >
-              Powered by Flowcheq Commerce
-            </LocalizedClientLink>
+            <>
+              <LocalizedClientLink
+                href="/online-store"
+                className="txt-compact-small text-ui-fg-base hover:text-ui-fg-subtle transition-colors"
+              >
+                Get your own online store
+              </LocalizedClientLink>
+              <LocalizedClientLink
+                href="/platform"
+                className="txt-compact-small text-ui-fg-base hover:text-ui-fg-subtle transition-colors"
+              >
+                Powered by Flowcheq Commerce
+              </LocalizedClientLink>
+            </>
           )}
         </div>
       </div>

@@ -37,9 +37,12 @@ tenant-specific settings.
 ```bash
 npm run dev --workspace=@dtc/storefront       # http://localhost:8000
 npm run build --workspace=@dtc/storefront
-npm run start --workspace=@dtc/storefront     # http://localhost:3000
+npm run start --workspace=@dtc/storefront     # http://localhost:8000
 npm run lint --workspace=@dtc/storefront
 ```
+
+The container image sets `PORT=3000`, so the storefront listens on 3000 inside
+the image. The package scripts above use the local default, 8000.
 
 The storefront has no test suite; it is exercised through the backend
 integration tests and the container acceptance checks in the build guide.

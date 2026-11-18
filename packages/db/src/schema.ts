@@ -56,6 +56,7 @@ export const orders = pgTable("orders", {
     .default(sql`now()`)
     .notNull(),
   paid_at: timestamp("paid_at", { withTimezone: true }),
+  fulfilled_at: timestamp("fulfilled_at", { withTimezone: true }),
 })
 
 export const tenants = pgTable("tenants", {

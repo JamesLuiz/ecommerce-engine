@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "fulfilled_at" timestamp with time zone;
