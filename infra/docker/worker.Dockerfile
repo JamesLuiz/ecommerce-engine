@@ -3,7 +3,6 @@
 # BullMQ worker that runs tenant provisioning and deprovisioning jobs.
 
 FROM node:22-bookworm-slim AS base
-ENV NODE_ENV=production
 WORKDIR /app
 
 FROM base AS deps
@@ -16,6 +15,8 @@ COPY apps/storefront/package.json apps/storefront/package.json
 COPY apps/dashboard/package.json apps/dashboard/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY packages/tenant-config/package.json packages/tenant-config/package.json
+COPY packages/storefront-config/package.json packages/storefront-config/package.json
+COPY packages/payments-gateway/package.json packages/payments-gateway/package.json
 COPY packages/db/package.json packages/db/package.json
 COPY packages/provisioner/package.json packages/provisioner/package.json
 RUN npm ci
@@ -31,6 +32,7 @@ RUN npm run build --workspace=@flowcheq/tenant-config \
   && npm run build --workspace=@dtc/worker
 
 FROM base AS runner
+ENV NODE_ENV=production
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs worker
 
