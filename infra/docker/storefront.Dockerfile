@@ -44,6 +44,8 @@ COPY --chown=nextjs:nodejs --from=builder /app/apps/storefront/public ./public
 COPY --chown=nextjs:nodejs --from=builder /app/apps/storefront/package.json ./package.json
 COPY --chown=nextjs:nodejs --from=builder /app/apps/storefront/next.config.js ./next.config.js
 COPY --chown=nextjs:nodejs --from=builder /app/node_modules ./node_modules
+COPY --chown=nextjs:nodejs --from=builder /app/packages/tenant-config ./packages/tenant-config
+COPY --chown=nextjs:nodejs --from=builder /app/packages/storefront-config ./packages/storefront-config
 
 USER nextjs
 EXPOSE 3000

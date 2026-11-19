@@ -34,7 +34,9 @@ ENV NODE_ENV=production
 ENV PORT=9000
 
 RUN groupadd --system --gid 1001 nodejs \
-  && useradd --system --uid 1001 --gid nodejs medusa
+  && useradd --system --uid 1001 --gid nodejs --create-home --home-dir /home/medusa medusa \
+  && mkdir -p /home/medusa/.config \
+  && chown -R medusa:nodejs /home/medusa
 
 WORKDIR /app
 
@@ -43,6 +45,7 @@ WORKDIR /app
 COPY --chown=medusa:nodejs --from=builder /app/apps/backend/.medusa/server ./
 COPY --chown=medusa:nodejs --from=builder /app/node_modules ./node_modules
 COPY --chown=medusa:nodejs --from=builder /app/packages/tenant-config ./packages/tenant-config
+COPY --chown=medusa:nodejs --from=builder /app/packages/storefront-config ./packages/storefront-config
 COPY --chown=medusa:nodejs infra/docker/backend-entrypoint.sh ./backend-entrypoint.sh
 
 RUN chmod +x ./backend-entrypoint.sh
