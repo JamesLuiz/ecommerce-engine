@@ -49,14 +49,11 @@ const REGION_PRESETS: Record<
   eu: { name: "Europe", countries: ["de", "fr", "es", "it", "nl"] },
 }
 
-function readTenantConfig(): TenantConfig {
+function readTenantConfig(): TenantConfig | null {
   const raw = process.env.TENANT_CONFIG
 
-  if (!raw) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      "TENANT_CONFIG is required. Pass the tenant configuration as a JSON environment variable."
-    )
+  if (!raw || !raw.trim()) {
+    return null
   }
 
   let value: unknown
@@ -87,13 +84,23 @@ function readTenantConfig(): TenantConfig {
 }
 
 export default async function bootstrapTenant({ container, args }: ExecArgs) {
-  const config = readTenantConfig()
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const query = container.resolve(ContainerRegistrationKeys.QUERY)
-  const regionService = container.resolve(Modules.REGION)
-  const salesChannelService = container.resolve(Modules.SALES_CHANNEL)
-  const storeService = container.resolve(Modules.STORE)
-  const userService = container.resolve(Modules.USER)
+
+  try {
+    const config = readTenantConfig()
+
+    if (!config) {
+      logger.info(
+        "TENANT_CONFIG not provided; skipping tenant bootstrap. The server will start and can be set up manually."
+      )
+      return
+    }
+
+    const query = container.resolve(ContainerRegistrationKeys.QUERY)
+    const regionService = container.resolve(Modules.REGION)
+    const salesChannelService = container.resolve(Modules.SALES_CHANNEL)
+    const storeService = container.resolve(Modules.STORE)
+    const userService = container.resolve(Modules.USER)
 
   const currencyCode = config.currency.toLowerCase()
   const regionPreset = REGION_PRESETS[config.region]
@@ -431,5 +438,10 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
     logger.info("SEED_DEMO is not \"true\"; skipped demo products.")
   }
 
-  logger.info(`Tenant "${config.slug}" bootstrap complete.`)
+    logger.info(`Tenant "${config.slug}" bootstrap complete.`)
+  } catch (error) {
+    logger.error(
+      `Tenant bootstrap failed but will not block deployment: ${(error as Error)?.message ?? error}`
+    )
+  }
 }
