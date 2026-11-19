@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import {
   createRegionsWorkflow,
   createTaxRegionsWorkflow,
+  updateProductVariantsWorkflow,
   updateRegionsWorkflow,
   updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows";
@@ -166,6 +167,44 @@ export default async function nigeriaRegionDefault({
     });
     logger.info(
       "Set the store default currency to NGN and the default region to Nigeria."
+    );
+  }
+
+  // Ensure existing product variants have NGN prices for the Nigeria region so
+  // products remain purchasable after switching from legacy currencies/regions.
+  try {
+    const { data: variants } = await query.graph({
+      entity: "product_variant",
+      fields: ["id"],
+    });
+
+    const variantIds = (variants || [])
+      .map((variant: { id?: string }) => variant.id)
+      .filter((id): id is string => Boolean(id));
+
+    const batchSize = 100;
+    for (let i = 0; i < variantIds.length; i += batchSize) {
+      const batch = variantIds.slice(i, i + batchSize);
+      await updateProductVariantsWorkflow(container).run({
+        input: {
+          product_variants: batch.map((id) => ({
+            id,
+            prices: [{ amount: 100, currency_code: "ngn" }],
+          })),
+        },
+      });
+    }
+
+    if (variantIds.length > 0) {
+      logger.info(
+        `Ensured NGN (₦100) prices for ${variantIds.length} product variant(s).`
+      );
+    }
+  } catch (error) {
+    logger.warn(
+      `Skipped NGN price backfill for existing variants: ${
+        (error as Error)?.message ?? error
+      }`
     );
   }
 }

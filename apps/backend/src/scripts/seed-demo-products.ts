@@ -302,10 +302,7 @@ export default async function seedDemoProducts({ container }: ExecArgs) {
         sku: `${handle.toUpperCase()}-${Object.values(combination).join('-').toUpperCase()}`,
         options: combination,
         prices: currencyCodes.map((currency_code) => ({
-          amount:
-            currency_code.toLowerCase() === "ngn"
-              ? 5000 + basePrice * 450
-              : basePrice,
+          amount: currency_code.toLowerCase() === "ngn" ? 100 : basePrice,
           currency_code,
         })),
       })),

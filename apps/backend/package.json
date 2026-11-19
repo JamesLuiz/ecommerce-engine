@@ -19,6 +19,7 @@
     "lint": "medusa lint",
     "setup:first": "node scripts/first-time-setup.mjs",
     "setup:publishable-key": "medusa exec ./src/scripts/ensure-publishable-key.ts",
+    "setup:nigeria-pricing": "medusa exec ./src/scripts/ensure-nigeria-pricing.ts",
     "test:integration:http": "TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
     "test:integration:modules": "TEST_TYPE=integration:modules NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
     "test:unit": "TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest --silent --runInBand --forceExit"
