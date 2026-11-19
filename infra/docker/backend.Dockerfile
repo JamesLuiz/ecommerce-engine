@@ -24,6 +24,7 @@ COPY packages/provisioner/package.json packages/provisioner/package.json
 RUN npm ci
 
 FROM deps AS builder
+ENV NODE_ENV=production
 COPY packages/tenant-config packages/tenant-config
 RUN npm run build --workspace=@flowcheq/tenant-config
 COPY apps/backend apps/backend

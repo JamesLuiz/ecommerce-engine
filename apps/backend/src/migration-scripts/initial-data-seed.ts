@@ -36,95 +36,130 @@ export default async function initial_data_seed({
     ModuleRegistrationName.FULFILLMENT
   );
 
-  // Idempotency: skip if the store has already been seeded (e.g. ng region
-  // exists or a default store/currency setup is present). This avoids failing
-  // on retries or existing databases where countries are already assigned.
-  try {
-    const { data: existingRegions } = await query.graph({
-      entity: "region",
-      fields: ["id", "countries.iso_2"],
-    });
-    const hasNgRegion = (existingRegions || []).some((region: any) =>
-      (region.countries || []).some(
-        (c: any) => (c.iso_2 || "").toLowerCase() === "ng"
-      )
-    );
-    const storeModuleService = container.resolve(Modules.STORE);
-    const [existingStore] = await storeModuleService.listStores({}, { take: 1 });
-    const hasSeededStore =
-      existingStore &&
-      Array.isArray((existingStore as any).supported_currencies) &&
-      (existingStore as any).supported_currencies.length > 0;
-
-    if (hasNgRegion || hasSeededStore) {
-      logger.info(
-        "Initial data already seeded (NG region/store present). Skipping."
-      );
-      return;
-    }
-  } catch (e) {
-    // If idempotency check fails (e.g. modules not ready), attempt to proceed
-    // but guard region creation below.
-    logger.warn(
-      `Initial seed idempotency check failed, proceeding: ${(e as Error)?.message ?? e}`
-    );
-  }
-
   const countries = ["ng"];
 
   logger.info("Seeding store data...");
-  const {
-    result: [defaultSalesChannel],
-  } = await createSalesChannelsWorkflow(container).run({
-    input: {
-      salesChannelsData: [
-        {
-          name: "Default Sales Channel",
-          description: "Created by Medusa",
-        },
-      ],
-    },
-  });
+  const salesChannelModuleService = container.resolve(Modules.SALES_CHANNEL);
+  const apiKeyModuleService = container.resolve(Modules.API_KEY);
+  const storeModuleService = container.resolve(Modules.STORE);
 
-  const {
-    result: [publishableApiKey],
-  } = await createApiKeysWorkflow(container).run({
-    input: {
-      api_keys: [
-        {
-          title: "Default Publishable API Key",
-          type: "publishable",
-          created_by: "",
-        },
-      ],
-    },
-  });
+  let defaultSalesChannel: any;
+  try {
+    const existingSalesChannels = await salesChannelModuleService.listSalesChannels(
+      { name: "Default Sales Channel" },
+      { take: 1 }
+    );
+    defaultSalesChannel = existingSalesChannels?.[0];
+  } catch {
+    // ignore and create below
+  }
+  if (!defaultSalesChannel) {
+    const {
+      result: [createdSalesChannel],
+    } = await createSalesChannelsWorkflow(container).run({
+      input: {
+        salesChannelsData: [
+          {
+            name: "Default Sales Channel",
+            description: "Created by Medusa",
+          },
+        ],
+      },
+    });
+    defaultSalesChannel = createdSalesChannel;
+  }
 
-  await linkSalesChannelsToApiKeyWorkflow(container).run({
-    input: {
-      id: publishableApiKey.id,
-      add: [defaultSalesChannel.id],
-    },
-  });
+  let publishableApiKey: any;
+  try {
+    const existingApiKeys = await apiKeyModuleService.listApiKeys(
+      { type: "publishable", title: "Default Publishable API Key" },
+      { take: 1 }
+    );
+    publishableApiKey = existingApiKeys?.[0];
+  } catch {
+    // ignore and create below
+  }
+  if (!publishableApiKey) {
+    const {
+      result: [createdApiKey],
+    } = await createApiKeysWorkflow(container).run({
+      input: {
+        api_keys: [
+          {
+            title: "Default Publishable API Key",
+            type: "publishable",
+            created_by: "",
+          },
+        ],
+      },
+    });
+    publishableApiKey = createdApiKey;
+  }
 
-  const {
-    result: [store],
-  } = await createStoresWorkflow(container).run({
-    input: {
-      stores: [
-        {
-          name: "Default Store",
-          supported_currencies: [
-            {
-              currency_code: "ngn",
-              is_default: true,
-            },
-          ],
-          default_sales_channel_id: defaultSalesChannel.id,
-        },
-      ],
-    },
-  });
+  try {
+    await linkSalesChannelsToApiKeyWorkflow(container).run({
+      input: {
+        id: publishableApiKey.id,
+        add: [defaultSalesChannel.id],
+      },
+    });
+  } catch (e) {
+    logger.warn(
+      `Skipping sales channel/api key link (may already exist): ${(e as Error)?.message ?? e}`
+    );
+  }
+
+  let store: any;
+  try {
+    const [existingStore] = await storeModuleService.listStores({}, { take: 1 });
+    store = existingStore;
+  } catch {
+    // ignore and create below
+  }
+  if (!store) {
+    const {
+      result: [createdStore],
+    } = await createStoresWorkflow(container).run({
+      input: {
+        stores: [
+          {
+            name: "Default Store",
+            supported_currencies: [
+              {
+                currency_code: "ngn",
+                is_default: true,
+              },
+            ],
+            default_sales_channel_id: defaultSalesChannel.id,
+          },
+        ],
+      },
+    });
+    store = createdStore;
+  } else {
+    // Ensure NGN is supported/default and sales channel is set when possible.
+    try {
+      await storeModuleService.updateStores(store.id, {
+        default_sales_channel_id:
+          store.default_sales_channel_id || defaultSalesChannel.id,
+        supported_currencies: [
+          {
+            currency_code: "ngn",
+            is_default: true,
+          },
+        ],
+      });
+      const [updatedStore] = await storeModuleService.listStores(
+        { id: store.id },
+        { take: 1 }
+      );
+      store = updatedStore || store;
+    } catch (e) {
+      logger.warn(
+        `Could not update existing store during seed: ${(e as Error)?.message ?? e}`
+      );
+    }
+  }
 
   logger.info("Seeding region data...");
   let region: any;
@@ -179,41 +214,68 @@ export default async function initial_data_seed({
   }
 
   logger.info("Seeding tax regions...");
-  await createTaxRegionsWorkflow(container).run({
-    input: countries.map((country_code) => ({
-      country_code,
-      provider_id: "tp_system",
-    })),
-  });
-  logger.info("Finished seeding tax regions.");
+  try {
+    await createTaxRegionsWorkflow(container).run({
+      input: countries.map((country_code) => ({
+        country_code,
+        provider_id: "tp_system",
+      })),
+    });
+    logger.info("Finished seeding tax regions.");
+  } catch (e) {
+    logger.warn(
+      `Skipping tax region seed (may already exist): ${(e as Error)?.message ?? e}`
+    );
+  }
 
   logger.info("Seeding stock location data...");
-  const { result: stockLocationResult } = await createStockLocationsWorkflow(
-    container
-  ).run({
-    input: {
-      locations: [
-        {
-          name: "Nigeria Warehouse",
-          address: {
-            city: "Lagos",
-            country_code: "NG",
-            address_1: "",
-          },
-        },
-      ],
-    },
-  });
-  const stockLocation = stockLocationResult[0];
+  let stockLocation: any;
+  try {
+    const { data: existingStockLocations } = await query.graph({
+      entity: "stock_location",
+      fields: ["id", "name"],
+    });
+    stockLocation = (existingStockLocations || []).find(
+      (loc: any) => loc.name === "Nigeria Warehouse"
+    );
+  } catch {
+    // ignore
+  }
 
-  await link.create({
-    [Modules.STOCK_LOCATION]: {
-      stock_location_id: stockLocation.id,
-    },
-    [Modules.FULFILLMENT]: {
-      fulfillment_provider_id: "manual_manual",
-    },
-  });
+  if (!stockLocation) {
+    const { result: stockLocationResult } = await createStockLocationsWorkflow(
+      container
+    ).run({
+      input: {
+        locations: [
+          {
+            name: "Nigeria Warehouse",
+            address: {
+              city: "Lagos",
+              country_code: "NG",
+              address_1: "",
+            },
+          },
+        ],
+      },
+    });
+    stockLocation = stockLocationResult[0];
+  }
+
+  try {
+    await link.create({
+      [Modules.STOCK_LOCATION]: {
+        stock_location_id: stockLocation.id,
+      },
+      [Modules.FULFILLMENT]: {
+        fulfillment_provider_id: "manual_manual",
+      },
+    });
+  } catch (e) {
+    logger.warn(
+      `Skipping stock location/fulfillment provider link (may already exist): ${(e as Error)?.message ?? e}`
+    );
+  }
 
   logger.info("Seeding fulfillment data...");
   // This is created by a migration script in core.
@@ -223,160 +285,235 @@ export default async function initial_data_seed({
   });
   const shippingProfile = shippingProfileResult[0];
 
-  const fulfillmentSet = await fulfillmentModuleService.createFulfillmentSets({
-    name: "Nigeria Warehouse delivery",
-    type: "shipping",
-    service_zones: [
-      {
-        name: "Nigeria",
-        geo_zones: [
+  try {
+    let fulfillmentSet: any;
+    try {
+      const existingSets = await fulfillmentModuleService.listFulfillmentSets(
+        { name: "Nigeria Warehouse delivery" },
+        { relations: ["service_zones"] }
+      );
+      fulfillmentSet = existingSets?.[0];
+    } catch {
+      // ignore
+    }
+
+    if (!fulfillmentSet) {
+      fulfillmentSet = await fulfillmentModuleService.createFulfillmentSets({
+        name: "Nigeria Warehouse delivery",
+        type: "shipping",
+        service_zones: [
           {
-            country_code: "ng",
-            type: "country",
+            name: "Nigeria",
+            geo_zones: [
+              {
+                country_code: "ng",
+                type: "country",
+              },
+            ],
           },
         ],
-      },
-    ],
-  });
+      });
+    }
 
-  await link.create({
-    [Modules.STOCK_LOCATION]: {
-      stock_location_id: stockLocation.id,
-    },
-    [Modules.FULFILLMENT]: {
-      fulfillment_set_id: fulfillmentSet.id,
-    },
-  });
-
-  await createShippingOptionsWorkflow(container).run({
-    input: [
-      {
-        name: "Standard Shipping",
-        price_type: "flat",
-        provider_id: "manual_manual",
-        service_zone_id: fulfillmentSet.service_zones[0].id,
-        shipping_profile_id: shippingProfile.id,
-        type: {
-          label: "Standard",
-          description: "Ship in 2-5 days.",
-          code: "standard",
+    try {
+      await link.create({
+        [Modules.STOCK_LOCATION]: {
+          stock_location_id: stockLocation.id,
         },
-        prices: [
-          {
-            currency_code: "ngn",
-            amount: 2500,
-          },
-          {
-            region_id: region.id,
-            amount: 2500,
-          },
-        ],
-        rules: [
-          {
-            attribute: "enabled_in_store",
-            value: "true",
-            operator: "eq",
-          },
-          {
-            attribute: "is_return",
-            value: "false",
-            operator: "eq",
-          },
-        ],
-      },
-      {
-        name: "Express Shipping",
-        price_type: "flat",
-        provider_id: "manual_manual",
-        service_zone_id: fulfillmentSet.service_zones[0].id,
-        shipping_profile_id: shippingProfile.id,
-        type: {
-          label: "Express",
-          description: "Ship in 1-2 days.",
-          code: "express",
+        [Modules.FULFILLMENT]: {
+          fulfillment_set_id: fulfillmentSet.id,
         },
-        prices: [
-          {
-            currency_code: "ngn",
-            amount: 5000,
-          },
-          {
-            region_id: region.id,
-            amount: 5000,
-          },
-        ],
-        rules: [
-          {
-            attribute: "enabled_in_store",
-            value: "true",
-            operator: "eq",
-          },
-          {
-            attribute: "is_return",
-            value: "false",
-            operator: "eq",
-          },
-        ],
-      },
-    ],
-  });
-  logger.info("Finished seeding fulfillment data.");
+      });
+    } catch (e) {
+      logger.warn(
+        `Skipping stock location/fulfillment set link (may already exist): ${(e as Error)?.message ?? e}`
+      );
+    }
 
-  await linkSalesChannelsToStockLocationWorkflow(container).run({
-    input: {
-      id: stockLocation.id,
-      add: [defaultSalesChannel.id],
-    },
-  });
+    const serviceZoneId =
+      fulfillmentSet.service_zones?.[0]?.id ||
+      (await fulfillmentModuleService.listFulfillmentSets(
+        { id: fulfillmentSet.id },
+        { relations: ["service_zones"] }
+      ))?.[0]?.service_zones?.[0]?.id;
+
+    if (serviceZoneId) {
+      try {
+        await createShippingOptionsWorkflow(container).run({
+          input: [
+            {
+              name: "Standard Shipping",
+              price_type: "flat",
+              provider_id: "manual_manual",
+              service_zone_id: serviceZoneId,
+              shipping_profile_id: shippingProfile.id,
+              type: {
+                label: "Standard",
+                description: "Ship in 2-5 days.",
+                code: "standard",
+              },
+              prices: [
+                {
+                  currency_code: "ngn",
+                  amount: 2500,
+                },
+                {
+                  region_id: region.id,
+                  amount: 2500,
+                },
+              ],
+              rules: [
+                {
+                  attribute: "enabled_in_store",
+                  value: "true",
+                  operator: "eq",
+                },
+                {
+                  attribute: "is_return",
+                  value: "false",
+                  operator: "eq",
+                },
+              ],
+            },
+            {
+              name: "Express Shipping",
+              price_type: "flat",
+              provider_id: "manual_manual",
+              service_zone_id: serviceZoneId,
+              shipping_profile_id: shippingProfile.id,
+              type: {
+                label: "Express",
+                description: "Ship in 1-2 days.",
+                code: "express",
+              },
+              prices: [
+                {
+                  currency_code: "ngn",
+                  amount: 5000,
+                },
+                {
+                  region_id: region.id,
+                  amount: 5000,
+                },
+              ],
+              rules: [
+                {
+                  attribute: "enabled_in_store",
+                  value: "true",
+                  operator: "eq",
+                },
+                {
+                  attribute: "is_return",
+                  value: "false",
+                  operator: "eq",
+                },
+              ],
+            },
+          ],
+        });
+      } catch (e) {
+        logger.warn(
+          `Skipping shipping option seed (may already exist): ${(e as Error)?.message ?? e}`
+        );
+      }
+    }
+    logger.info("Finished seeding fulfillment data.");
+  } catch (e) {
+    logger.warn(
+      `Skipping fulfillment/shipping seed due to error: ${(e as Error)?.message ?? e}`
+    );
+  }
+
+  try {
+    await linkSalesChannelsToStockLocationWorkflow(container).run({
+      input: {
+        id: stockLocation.id,
+        add: [defaultSalesChannel.id],
+      },
+    });
+  } catch (e) {
+    logger.warn(
+      `Skipping sales channel/stock location link (may already exist): ${(e as Error)?.message ?? e}`
+    );
+  }
   logger.info("Finished seeding stock location data.");
 
   logger.info("Seeding product data...");
 
-  const { result: categoryResult } = await createProductCategoriesWorkflow(
-    container
-  ).run({
-    input: {
-      product_categories: [
-        {
-          name: "Shirts",
-          is_active: true,
+  let categoryResult: any[] = [];
+  try {
+    const { data: existingCategories } = await query.graph({
+      entity: "product_category",
+      fields: ["id", "name"],
+    });
+    if (existingCategories && existingCategories.length > 0) {
+      categoryResult = existingCategories as any[];
+      logger.info("Product categories already exist, skipping creation.");
+    } else {
+      const { result } = await createProductCategoriesWorkflow(container).run({
+        input: {
+          product_categories: [
+            { name: "Shirts", is_active: true },
+            { name: "Sweatshirts", is_active: true },
+            { name: "Pants", is_active: true },
+            { name: "Merch", is_active: true },
+          ],
         },
-        {
-          name: "Sweatshirts",
-          is_active: true,
-        },
-        {
-          name: "Pants",
-          is_active: true,
-        },
-        {
-          name: "Merch",
-          is_active: true,
-        },
-      ],
-    },
-  });
+      });
+      categoryResult = result;
+    }
+  } catch (e) {
+    logger.warn(
+      `Skipping category seed due to error: ${(e as Error)?.message ?? e}`
+    );
+    const { data: existingCategories } = await query.graph({
+      entity: "product_category",
+      fields: ["id", "name"],
+    }).catch(() => ({ data: [] as any[] }));
+    categoryResult = (existingCategories || []) as any[];
+  }
 
-  const { result: productOptionsResult } = await createProductOptionsWorkflow(
-    container
-  ).run({
-    input: {
-      product_options: [
-        {
-          title: "Size",
-          values: ["S", "M", "L", "XL"],
-        },
-        {
-          title: "Color",
-          values: ["Black", "White"],
-        },
-      ],
-    },
-  });
-  const sizeOption = productOptionsResult.find((o) => o.title === "Size")!;
-  const colorOption = productOptionsResult.find((o) => o.title === "Color")!;
+  let sizeOption: any;
+  let colorOption: any;
+  try {
+    const { data: existingProducts } = await query.graph({
+      entity: "product",
+      fields: ["id", "handle"],
+      pagination: { take: 1 },
+    });
+    if (existingProducts && existingProducts.length > 0) {
+      logger.info("Products already exist, skipping product/options seed.");
+      logger.info("Finished seeding product data.");
+      return;
+    }
 
-  await createProductsWorkflow(container).run({
+    const { result: productOptionsResult } = await createProductOptionsWorkflow(
+      container
+    ).run({
+      input: {
+        product_options: [
+          {
+            title: "Size",
+            values: ["S", "M", "L", "XL"],
+          },
+          {
+            title: "Color",
+            values: ["Black", "White"],
+          },
+        ],
+      },
+    });
+    sizeOption = productOptionsResult.find((o) => o.title === "Size")!;
+    colorOption = productOptionsResult.find((o) => o.title === "Color")!;
+  } catch (e) {
+    logger.warn(
+      `Skipping product/options seed due to error: ${(e as Error)?.message ?? e}`
+    );
+    return;
+  }
+
+  try {
+    await createProductsWorkflow(container).run({
     input: {
       products: [
         {
@@ -604,24 +741,34 @@ export default async function initial_data_seed({
       ],
     },
   });
+  } catch (e) {
+    logger.warn(
+      `Skipping product creation due to error: ${(e as Error)?.message ?? e}`
+    );
+  }
   logger.info("Finished seeding product data.");
 
   logger.info("Seeding inventory levels.");
+  try {
+    const { data: inventoryItems } = await query.graph({
+      entity: "inventory_item",
+      fields: ["id"],
+    });
 
-  const { data: inventoryItems } = await query.graph({
-    entity: "inventory_item",
-    fields: ["id"],
-  });
-
-  await createInventoryLevelsWorkflow(container).run({
-    input: {
-      inventory_levels: inventoryItems.map((item) => ({
-        location_id: stockLocation.id,
-        stocked_quantity: 1000000,
-        inventory_item_id: item.id,
-      })),
-    },
-  });
+    await createInventoryLevelsWorkflow(container).run({
+      input: {
+        inventory_levels: (inventoryItems || []).map((item: any) => ({
+          location_id: stockLocation.id,
+          stocked_quantity: 1000000,
+          inventory_item_id: item.id,
+        })),
+      },
+    });
+  } catch (e) {
+    logger.warn(
+      `Skipping inventory level seed due to error: ${(e as Error)?.message ?? e}`
+    );
+  }
 
   logger.info("Finished seeding inventory levels data.");
 }

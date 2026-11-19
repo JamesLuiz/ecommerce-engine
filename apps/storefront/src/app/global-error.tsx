@@ -3,14 +3,10 @@
 export default function GlobalError({
   error,
   reset,
-  retry,
 }: {
   error: Error & { digest?: string }
-  reset?: () => void
-  retry?: () => void
+  reset: () => void
 }) {
-  console.error(error)
-
   return (
     <html lang="en">
       <body>
@@ -31,14 +27,11 @@ export default function GlobalError({
             Something went wrong
           </h2>
           <p style={{ margin: 0, color: "#555" }}>
-            An unexpected error occurred. Please try again.
+            An unexpected error occurred.
           </p>
           <button
             type="button"
-            onClick={() => {
-              if (retry) retry()
-              else reset?.()
-            }}
+            onClick={() => reset()}
             style={{
               marginTop: "0.5rem",
               padding: "0.5rem 1rem",
