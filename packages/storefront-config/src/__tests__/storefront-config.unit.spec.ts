@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest"
 
 import {
   DEFAULT_STOREFRONT_NAME,
+  LEGACY_PRESET_FALLBACKS,
+  STOREFRONT_LAYOUT_IDS,
   storefrontSettingsSchema,
   normalizeStorefrontSettings,
   storefrontSettingsFromMetadata,
   storefrontSettingsToMetadata,
+  resolveContactLinks,
   type StorefrontSettings,
 } from "../index"
 
@@ -50,6 +53,23 @@ describe("storefront settings", () => {
     expect(settings.theme.preset).toBe("bold")
     expect(settings.homepage.hero.enabled).toBe(false)
     expect(settings.features.whatsappNumber).toBe("2348000000000")
+  })
+
+  it("accepts every modern layout preset and exposes the layout picker ids", () => {
+    for (const preset of STOREFRONT_LAYOUT_IDS) {
+      const settings = storefrontSettingsSchema.parse({ theme: { preset } })
+      expect(settings.theme.preset).toBe(preset)
+    }
+
+    expect(STOREFRONT_LAYOUT_IDS).toHaveLength(10)
+    expect(STOREFRONT_LAYOUT_IDS).toContain("minimal")
+    expect(STOREFRONT_LAYOUT_IDS).toContain("aurora")
+    expect(STOREFRONT_LAYOUT_IDS).toContain("pop")
+    expect(LEGACY_PRESET_FALLBACKS).toMatchObject({
+      editorial: "luxe",
+      bold: "street",
+      classic: "terra",
+    })
   })
 
   it("merges nested storefront metadata over defaults", () => {
@@ -100,5 +120,51 @@ describe("storefront settings", () => {
     })
 
     expect(parsed.brand.name).toBe("Acme")
+  })
+
+  it("resolves footer contact methods with per-kind links", () => {
+    const links = resolveContactLinks([
+      { kind: "whatsapp", label: "Chat", url: "+234 800 000 0000" },
+      { kind: "email", label: "", url: "hi@acme.shop" },
+      { kind: "instagram", label: "", url: "instagram.com/acme" },
+      { kind: "custom", label: "Blog", url: "/blog" },
+    ])
+
+    expect(links).toHaveLength(4)
+    expect(links[0]).toMatchObject({
+      kind: "whatsapp",
+      href: "https://wa.me/2348000000000",
+    })
+    expect(links[1]).toMatchObject({
+      kind: "email",
+      href: "mailto:hi@acme.shop",
+    })
+    expect(links[2]?.href).toBe("https://instagram.com/acme")
+    expect(links[3]).toMatchObject({ kind: "custom", href: "/blog" })
+  })
+
+  it("maps legacy platform records onto contact kinds", () => {
+    const links = resolveContactLinks([
+      { platform: "instagram", url: "https://instagram.com/acme" },
+      { platform: "ig", url: "acme" },
+      { platform: "", url: "" },
+    ])
+
+    expect(links).toHaveLength(2)
+    expect(links[0]).toMatchObject({
+      kind: "instagram",
+      label: "instagram",
+    })
+    expect(links[1]).toMatchObject({ kind: "instagram" })
+  })
+
+  it("accepts the new contact method shape in the settings schema", () => {
+    const settings = storefrontSettingsSchema.parse({
+      footer: {
+        socials: [{ kind: "whatsapp", label: "Chat", url: "2348000000000" }],
+      },
+    })
+
+    expect(settings.footer.socials[0]).toMatchObject({ kind: "whatsapp" })
   })
 })

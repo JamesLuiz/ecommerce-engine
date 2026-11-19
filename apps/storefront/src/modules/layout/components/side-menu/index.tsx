@@ -13,12 +13,12 @@ import LanguageSelect from "../language-select"
 import { Locale } from "@lib/data/locales"
 
 
-const SideMenuItems = {
-  Home: "/",
-  Store: "/store",
-  Account: "/account",
-  Cart: "/cart",
-}
+const FALLBACK_MENU_ITEMS = [
+  { label: "Home", href: "/" },
+  { label: "Store", href: "/store" },
+  { label: "Account", href: "/account" },
+  { label: "Cart", href: "/cart" },
+]
 
 type SideMenuProps = {
   regions: HttpTypes.StoreRegion[] | null
@@ -27,9 +27,17 @@ type SideMenuProps = {
 }
 
 const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
-  const { storeName } = useStoreConfig()
+  const { storeName, settings } = useStoreConfig()
   const countryToggleState = useToggleState()
   const languageToggleState = useToggleState()
+
+  // Merchant-defined links (Settings → Storefront → Navigation & features),
+  // falling back to the default menu when none are configured.
+  const configuredLinks = settings?.navigation?.links ?? []
+  const menuItems =
+    configuredLinks.length > 0 ? configuredLinks : FALLBACK_MENU_ITEMS
+  const showLocaleSelector = settings?.features?.showLocaleSelector ?? true
+  const showCountrySelector = settings?.features?.showCountrySelector ?? true
 
   return (
     <div className="h-full">
@@ -79,23 +87,23 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                       </button>
                     </div>
                     <ul className="flex flex-col gap-6 items-start justify-start">
-                      {Object.entries(SideMenuItems).map(([name, href]) => {
+                      {menuItems.map((item) => {
                         return (
-                          <li key={name}>
+                          <li key={`${item.label}-${item.href}`}>
                             <LocalizedClientLink
-                              href={href}
+                              href={item.href}
                               className="text-3xl leading-10 hover:text-ui-fg-disabled"
                               onClick={close}
-                              data-testid={`${name.toLowerCase()}-link`}
+                              data-testid={`${item.label.toLowerCase()}-link`}
                             >
-                              {name}
+                              {item.label}
                             </LocalizedClientLink>
                           </li>
                         )
                       })}
                     </ul>
                     <div className="flex flex-col gap-y-6">
-                      {!!locales?.length && (
+                      {showLocaleSelector && !!locales?.length && (
                         <div
                           className="flex justify-between"
                           onMouseEnter={languageToggleState.open}
@@ -114,6 +122,7 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                           />
                         </div>
                       )}
+                      {showCountrySelector && (
                       <div
                         className="flex justify-between"
                         onMouseEnter={countryToggleState.open}
@@ -132,6 +141,7 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                           )}
                         />
                       </div>
+                      )}
                       <Text className="flex justify-between txt-compact-small">
                         © {new Date().getFullYear()} {storeName}. All rights
                         reserved.

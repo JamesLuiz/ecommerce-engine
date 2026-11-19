@@ -1,5 +1,6 @@
 import { ConfigProvider } from "@lib/config-provider"
 import { hydrateRuntimeBrandConfig } from "@lib/runtime-config"
+import { resolveLayoutId } from "@modules/themes/registry"
 import { Metadata } from "next"
 import type { CSSProperties } from "react"
 import "styles/globals.css"
@@ -32,6 +33,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
       data-mode={settings?.theme?.mode ?? "light"}
       data-header-style={settings?.layout?.headerStyle ?? "centered"}
       data-footer-style={settings?.layout?.footerStyle ?? "compact"}
+      data-layout={resolveLayoutId(settings?.theme?.preset)}
       style={brandStyle}
     >
       <head>

@@ -374,7 +374,7 @@ export const buildAnalytics = (input: BuildAnalyticsInput): AnalyticsResult => {
     lowStockThreshold = 5,
     topLimit = 5,
     lowStockLimit = 8,
-    fallbackCurrency = "usd",
+    fallbackCurrency = "ngn",
   } = input
 
   const effectiveFrom = startOfBucket(

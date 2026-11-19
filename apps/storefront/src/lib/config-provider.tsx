@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 import { connectStoreSettingsSSE } from "@lib/store-settings-sse"
 import type { StorefrontSettings } from "@flowcheq/storefront-config"
+import { resolveLayoutId } from "@modules/themes/registry"
 
 export type StoreConfig = {
   backendUrl: string
@@ -46,6 +47,10 @@ const applySettingsToDocument = (settings: StorefrontSettings) => {
 
   if (settings.layout?.footerStyle) {
     root.dataset.footerStyle = settings.layout.footerStyle
+  }
+
+  if (settings.theme?.preset) {
+    root.dataset.layout = resolveLayoutId(settings.theme.preset)
   }
 }
 

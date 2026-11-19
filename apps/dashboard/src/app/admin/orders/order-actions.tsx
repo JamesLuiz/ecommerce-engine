@@ -13,12 +13,12 @@ export function OrderActions({
   fulfilled: boolean
 }) {
   const router = useRouter()
-  const [pending, setPending] = useState<"paid" | "fulfilled" | null>(null)
+  const [pending, setPending] = useState<"paid" | "fulfilled" | "deploy" | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
-  const runAction = async (action: "mark_paid" | "mark_fulfilled") => {
-    setPending(action === "mark_paid" ? "paid" : "fulfilled")
+  const runAction = async (action: "mark_paid" | "mark_fulfilled" | "deploy") => {
+    setPending(action === "mark_paid" ? "paid" : action === "deploy" ? "deploy" : "fulfilled")
     setError(null)
     setMessage(null)
 
@@ -29,27 +29,34 @@ export function OrderActions({
         body: JSON.stringify({ action }),
       })
       const data = (await response.json().catch(() => ({}))) as {
+        ok?: boolean
         error?: string
         jobId?: string
         alreadyPaid?: boolean
         alreadyFulfilled?: boolean
       }
 
-      if (!response.ok) {
+      if (!response.ok || data.ok === false) {
         setError(data.error ?? "Action failed")
         return
       }
 
       if (action === "mark_paid") {
-        setMessage(
-          data.jobId
-            ? `Provisioning queued (job ${data.jobId}).`
-            : data.alreadyPaid
-              ? "Order was already paid."
-              : "Order marked paid."
-        )
+        if (data.alreadyPaid) {
+          setMessage("Order is already paid.")
+        } else {
+          setMessage("Order marked paid. Use Deploy to start provisioning.")
+        }
+      } else if (action === "deploy") {
+        if (data.jobId) {
+          setMessage(`Deploy queued (job ${data.jobId}).`)
+        } else {
+          setMessage("Deploy requested.")
+        }
+      } else if (data.alreadyFulfilled) {
+        setMessage("Order is already fulfilled.")
       } else {
-        setMessage(data.alreadyFulfilled ? "Order was already fulfilled." : "Order marked fulfilled.")
+        setMessage("Order marked fulfilled.")
       }
 
       router.refresh()
@@ -60,37 +67,38 @@ export function OrderActions({
     }
   }
 
-  const canMarkPaid = status !== "paid"
-  const canMarkFulfilled = status === "paid" && !fulfilled
-
-  if (!canMarkPaid && !canMarkFulfilled) {
-    return <span className="text-xs text-gray-500">-</span>
-  }
+  const isPaid = status === "paid"
 
   return (
-    <div className="flex flex-col gap-1">
-      {canMarkPaid ? (
+    <div className="flex flex-col items-start gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => void runAction("mark_paid")}
-          disabled={pending !== null}
-          className="rounded border border-gray-300 bg-white px-2 py-1 text-xs font-medium hover:bg-gray-50 disabled:opacity-50"
+          disabled={isPaid || pending !== null}
+          className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {pending === "paid" ? "Queuing..." : "Mark paid and deploy"}
+          {pending === "paid" ? "Marking..." : "Mark paid"}
         </button>
-      ) : null}
-      {canMarkFulfilled ? (
         <button
           type="button"
           onClick={() => void runAction("mark_fulfilled")}
-          disabled={pending !== null}
-          className="rounded border border-gray-300 bg-white px-2 py-1 text-xs font-medium hover:bg-gray-50 disabled:opacity-50"
+          disabled={fulfilled || pending !== null}
+          className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {pending === "fulfilled" ? "Saving..." : "Mark fulfilled"}
+          {pending === "fulfilled" ? "Saving..." : "Order fulfilled"}
         </button>
-      ) : null}
-      {error ? <span className="text-xs text-red-600">{error}</span> : null}
-      {message ? <span className="text-xs text-green-700">{message}</span> : null}
+        <button
+          type="button"
+          onClick={() => void runAction("deploy")}
+          disabled={!isPaid || pending !== null}
+          className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {pending === "deploy" ? "Queueing..." : "Deploy"}
+        </button>
+      </div>
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {message ? <p className="text-xs text-green-700">{message}</p> : null}
     </div>
   )
 }

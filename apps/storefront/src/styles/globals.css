@@ -65,6 +65,574 @@
     box-shadow: 0 18px 42px rgba(17, 17, 17, 0.04);
   }
 
+  /* -------------------------------------------------------------- */
+  /* Switchable storefront layouts (Settings → Storefront → Layout)  */
+  /*                                                                 */
+  /* Each `[data-layout="…"]` scope re-skins the same homepage       */
+  /* sections with its own palette, surfaces, card shape and motion. */
+  /* The `.theme-*` primitives give every layout shared animation    */
+  /* and typography hooks so all nine feel equally polished.         */
+  /* -------------------------------------------------------------- */
+
+  .theme-reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+  }
+
+  .theme-reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .theme-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .theme-section-title {
+    font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.75rem);
+    font-weight: 650;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+  }
+
+  .theme-card-img {
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .group:hover .theme-card-img {
+    transform: scale(1.06);
+  }
+
+  .theme-price-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 9999px;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  @keyframes theme-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-14px);
+    }
+  }
+
+  @keyframes theme-drift {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(24px, -20px) scale(1.08);
+    }
+  }
+
+  @keyframes theme-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes theme-shine {
+    from {
+      transform: translateX(-120%) skewX(-18deg);
+    }
+    to {
+      transform: translateX(240%) skewX(-18deg);
+    }
+  }
+
+  .animate-theme-float {
+    animation: theme-float 7s ease-in-out infinite;
+  }
+
+  .animate-theme-drift {
+    animation: theme-drift 14s ease-in-out infinite;
+  }
+
+  .animate-theme-marquee {
+    animation: theme-marquee 26s linear infinite;
+  }
+
+  .theme-shine {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .theme-shine::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 45%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.35),
+      transparent
+    );
+    animation: theme-shine 3.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* ---- Layout palettes: each layout owns its surfaces + accents. ---- */
+  /* `minimal` keeps the existing default look (no overrides needed).   */
+
+  [data-layout="aurora"] {
+    --t-bg: #0d0a1f;
+    --t-bg-soft: #171231;
+    --t-surface: rgba(255, 255, 255, 0.06);
+    --t-ink: #f4f1ff;
+    --t-muted: rgba(244, 241, 255, 0.62);
+    --t-line: rgba(255, 255, 255, 0.12);
+    --t-accent: #a78bfa;
+    --t-accent-2: #f0abfc;
+    color-scheme: dark;
+  }
+
+  [data-layout="luxe"] {
+    --t-bg: #0e0d0b;
+    --t-bg-soft: #171512;
+    --t-surface: #1b1915;
+    --t-ink: #f3ead9;
+    --t-muted: rgba(243, 234, 217, 0.6);
+    --t-line: rgba(212, 175, 105, 0.22);
+    --t-accent: #d4af69;
+    --t-accent-2: #8c6a2f;
+    color-scheme: dark;
+  }
+
+  [data-layout="street"] {
+    --t-bg: #f4f1ea;
+    --t-bg-soft: #ffffff;
+    --t-surface: #141414;
+    --t-ink: #141414;
+    --t-muted: rgba(20, 20, 20, 0.6);
+    --t-line: #141414;
+    --t-accent: #ff4d00;
+    --t-accent-2: #ffd400;
+    color-scheme: light;
+  }
+
+  [data-layout="brutal"] {
+    --t-bg: #fdfbf3;
+    --t-bg-soft: #f3ecd9;
+    --t-surface: #ffffff;
+    --t-ink: #101010;
+    --t-muted: rgba(16, 16, 16, 0.62);
+    --t-line: #101010;
+    --t-accent: #2545ff;
+    --t-accent-2: #ff5da2;
+    color-scheme: light;
+  }
+
+  [data-layout="breeze"] {
+    --t-bg: #f2f7f5;
+    --t-bg-soft: #ffffff;
+    --t-surface: #ffffff;
+    --t-ink: #123332;
+    --t-muted: rgba(18, 51, 50, 0.62);
+    --t-line: rgba(18, 51, 50, 0.12);
+    --t-accent: #0e9384;
+    --t-accent-2: #7dd3c6;
+    color-scheme: light;
+  }
+
+  [data-layout="ember"] {
+    --t-bg: #1c1009;
+    --t-bg-soft: #2a170c;
+    --t-surface: rgba(255, 235, 205, 0.06);
+    --t-ink: #f7e8d5;
+    --t-muted: rgba(247, 232, 213, 0.62);
+    --t-line: rgba(255, 180, 100, 0.22);
+    --t-accent: #ff8a3d;
+    --t-accent-2: #ffc53d;
+    color-scheme: dark;
+  }
+
+  [data-layout="terra"] {
+    --t-bg: #f6f3ea;
+    --t-bg-soft: #ede7d3;
+    --t-surface: #fffdf6;
+    --t-ink: #2e2a1f;
+    --t-muted: rgba(46, 42, 31, 0.62);
+    --t-line: rgba(46, 42, 31, 0.14);
+    --t-accent: #5b7d3c;
+    --t-accent-2: #c98f2e;
+    color-scheme: light;
+  }
+
+  [data-layout="chrome"] {
+    --t-bg: #05070d;
+    --t-bg-soft: #0a0f1c;
+    --t-surface: rgba(148, 184, 255, 0.07);
+    --t-ink: #e8f1ff;
+    --t-muted: rgba(232, 241, 255, 0.6);
+    --t-line: rgba(148, 184, 255, 0.2);
+    --t-accent: #38e1ff;
+    --t-accent-2: #7c7cff;
+    color-scheme: dark;
+  }
+
+  [data-layout="pop"] {
+    --t-bg: #fff6ec;
+    --t-bg-soft: #ffe9f3;
+    --t-surface: #ffffff;
+    --t-ink: #232323;
+    --t-muted: rgba(35, 35, 35, 0.62);
+    --t-line: #232323;
+    --t-accent: #ff3ea5;
+    --t-accent-2: #7c5cff;
+    color-scheme: light;
+  }
+
+  /* -------------------------------------------------------------- */
+  /* Themed product page (all layouts except minimal restyle the    */
+  /* add-to-cart buttons, price, variant pills, and gallery frame). */
+  /* Scoped by layout + stable data-testids so checkout-critical    */
+  /* logic is untouched — visuals only.                             */
+  /* -------------------------------------------------------------- */
+
+  [data-layout="aurora"] [data-testid="add-product-button"],
+  [data-layout="aurora"] [data-testid="mobile-cart-button"] {
+    background: linear-gradient(90deg, #7c5cf6, #d946ef);
+    border-radius: 9999px;
+    font-weight: 600;
+    box-shadow: 0 12px 32px rgba(168, 85, 247, 0.4);
+  }
+
+  [data-layout="aurora"] [data-testid="product-price"] {
+    color: #7c3aed;
+    font-weight: 700;
+  }
+
+  [data-layout="aurora"] [data-testid="option-button"].border-ui-border-interactive {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 1px #8b5cf6;
+  }
+
+  [data-layout="luxe"] [data-testid="add-product-button"],
+  [data-layout="luxe"] [data-testid="mobile-cart-button"] {
+    background: #d4af69;
+    color: #0e0d0b;
+    border-radius: 2px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+  }
+
+  [data-layout="luxe"] [data-testid="product-price"] {
+    color: #8c6a2f;
+    font-family: Georgia, serif;
+  }
+
+  [data-layout="luxe"] [data-testid="option-button"].border-ui-border-interactive {
+    border-color: #d4af69;
+    box-shadow: 0 0 0 1px #d4af69;
+  }
+
+  [data-layout="street"] [data-testid="add-product-button"],
+  [data-layout="street"] [data-testid="mobile-cart-button"] {
+    background: #141414;
+    border-radius: 0;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    box-shadow: 5px 5px 0 #ff4d00;
+  }
+
+  [data-layout="street"] [data-testid="product-price"] {
+    color: #ff4d00;
+    font-weight: 800;
+  }
+
+  [data-layout="street"] [data-testid="option-button"].border-ui-border-interactive {
+    border-color: #141414;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 #ff4d00;
+  }
+
+  [data-layout="brutal"] [data-testid="add-product-button"],
+  [data-layout="brutal"] [data-testid="mobile-cart-button"] {
+    background: #2545ff;
+    border: 2px solid #101010;
+    border-radius: 0;
+    font-family: monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 5px 5px 0 #101010;
+  }
+
+  [data-layout="brutal"] [data-testid="product-price"] {
+    color: #2545ff;
+    font-family: monospace;
+    font-weight: 700;
+  }
+
+  [data-layout="brutal"] [data-testid="option-button"].border-ui-border-interactive {
+    border-color: #101010;
+    border-width: 2px;
+    box-shadow: 4px 4px 0 #2545ff;
+  }
+
+  [data-layout="breeze"] [data-testid="add-product-button"],
+  [data-layout="breeze"] [data-testid="mobile-cart-button"] {
+    background: #123332;
+    border-radius: 9999px;
+    font-weight: 600;
+    box-shadow: 0 12px 28px rgba(18, 51, 50, 0.3);
+  }
+
+  [data-layout="breeze"] [data-testid="product-price"] {
+    color: #0e9384;
+    font-weight: 700;
+  }
+
+  [data-layout="breeze"] [data-testid="option-button"].border-ui-border-interactive {
+    border-color: #0e9384;
+    box-shadow: 0 0 0 1px #0e9384;
+  }
+
+  [data-layout="ember"] [data-testid="add-product-button"],
+  [data-layout="ember"] [data-testid="mobile-cart-button"] {
+    background: linear-gradient(90deg, #ff8a3d, #ffc53d);
+    color: #1c1009;
+    border-radius: 9999px;
+    font-weight: 700;
+    box-shadow: 0 12px 32px rgba(255, 138, 61, 0.4);
+  }
+
+  [data-layout="ember"] [data-testid="product-price"] {
+    color: #c25e1e;
+    font-weight: 700;
+  }
+
+  [data-layout="ember"] [data-testid="option-button"].border-ui-border-interactive {
+    border-color: #ff8a3d;
+    box-shadow: 0 0 0 1px #ff8a3d;
+  }
+
+  [data-layout="terra"] [data-testid="add-product-button"],
+  [data-layout="terra"] [data-testid="mobile-cart-button"] {
+    background: #2e2a1f;
+    border-radius: 9999px;
+    font-weight: 600;
+  }
+
+  [data-layout="terra"] [data-testid="product-price"] {
+    color: #3f5a29;
+    font-weight: 700;
+  }
+
+  [data-layout="terra"] [data-testid="option-button"].border-ui-border-interactive {
+    border-color: #5b7d3c;
+    box-shadow: 0 0 0 1px #5b7d3c;
+  }
+
+  [data-layout="chrome"] [data-testid="add-product-button"],
+  [data-layout="chrome"] [data-testid="mobile-cart-button"] {
+    background: linear-gradient(90deg, #38e1ff, #7c7cff);
+    color: #05070d;
+    border-radius: 10px;
+    font-family: monospace;
+    font-weight: 700;
+    box-shadow: 0 12px 32px rgba(56, 225, 255, 0.35);
+  }
+
+  [data-layout="chrome"] [data-testid="product-price"] {
+    color: #0090b3;
+    font-family: monospace;
+    font-weight: 700;
+  }
+
+  [data-layout="chrome"] [data-testid="option-button"].border-ui-border-interactive {
+    border-color: #38e1ff;
+    box-shadow: 0 0 0 1px #38e1ff;
+  }
+
+  [data-layout="pop"] [data-testid="add-product-button"],
+  [data-layout="pop"] [data-testid="mobile-cart-button"] {
+    background: #ff3ea5;
+    border: 3px solid #232323;
+    border-radius: 9999px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    box-shadow: 4px 4px 0 #232323;
+  }
+
+  [data-layout="pop"] [data-testid="product-price"] {
+    color: #ff3ea5;
+    font-weight: 800;
+  }
+
+  [data-layout="pop"] [data-testid="option-button"].border-ui-border-interactive {
+    border-color: #232323;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 #ff3ea5;
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Themed navbar + footer. Dark layouts get a dark glass header */
+  /* so the bar matches the theme; light layouts keep the default */
+  /* with theme-flavoured borders. Scoped by layout + data hooks. */
+  /* ------------------------------------------------------------ */
+
+  [data-layout="aurora"] header[data-header-style],
+  [data-layout="luxe"] header[data-header-style],
+  [data-layout="ember"] header[data-header-style],
+  [data-layout="chrome"] header[data-header-style] {
+    background: rgba(10, 8, 20, 0.72);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  [data-layout="aurora"] header[data-header-style] nav,
+  [data-layout="luxe"] header[data-header-style] nav,
+  [data-layout="ember"] header[data-header-style] nav,
+  [data-layout="chrome"] header[data-header-style] nav,
+  [data-layout="aurora"] header[data-header-style] nav a,
+  [data-layout="luxe"] header[data-header-style] nav a,
+  [data-layout="ember"] header[data-header-style] nav a,
+  [data-layout="chrome"] header[data-header-style] nav a {
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  [data-layout="aurora"] header[data-header-style] nav a:hover,
+  [data-layout="luxe"] header[data-header-style] nav a:hover,
+  [data-layout="ember"] header[data-header-style] nav a:hover,
+  [data-layout="chrome"] header[data-header-style] nav a:hover {
+    color: #fff;
+  }
+
+  [data-layout="aurora"] header[data-header-style] [data-testid="nav-store-link"] span,
+  [data-layout="luxe"] header[data-header-style] [data-testid="nav-store-link"] span,
+  [data-layout="ember"] header[data-header-style] [data-testid="nav-store-link"] span,
+  [data-layout="chrome"] header[data-header-style] [data-testid="nav-store-link"] span {
+    color: #fff;
+  }
+
+  [data-layout="luxe"] header[data-header-style] {
+    border-bottom-color: rgba(212, 175, 105, 0.25);
+  }
+
+  [data-layout="street"] header[data-header-style] {
+    background: rgba(244, 241, 234, 0.9);
+    border-bottom: 2px solid #141414;
+  }
+
+  [data-layout="street"] header[data-header-style] nav a {
+    color: #141414;
+    font-weight: 700;
+  }
+
+  [data-layout="brutal"] header[data-header-style] {
+    background: #fdfbf3;
+    border-bottom: 2px solid #101010;
+  }
+
+  [data-layout="brutal"] header[data-header-style] nav a {
+    color: #101010;
+    font-family: monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  [data-layout="pop"] header[data-header-style] {
+    background: rgba(255, 246, 236, 0.9);
+    border-bottom: 3px solid #232323;
+  }
+
+  [data-layout="pop"] header[data-header-style] nav a {
+    color: #232323;
+    font-weight: 800;
+  }
+
+  [data-layout="breeze"] header[data-header-style] {
+    background: rgba(255, 255, 255, 0.85);
+    border-bottom-color: rgba(18, 51, 50, 0.1);
+  }
+
+  [data-layout="terra"] header[data-header-style] {
+    background: rgba(246, 243, 234, 0.9);
+    border-bottom-color: rgba(46, 42, 31, 0.14);
+  }
+
+  /* Footer method chips inherit the theme accent on hover. */
+  [data-layout]:not([data-layout="minimal"]) footer a:hover {
+    border-color: var(--t-accent);
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Themed listing shell. Category, collection, store and search */
+  /* pages render on the default light page, but hit-card frames */
+  /* for the dark layouts (aurora, luxe, ember, chrome) assume a */
+  /* dark backdrop — light titles on white were unreadable. The */
+  /* shell paints the layout's own surface behind the listing so */
+  /* every theme reads correctly. Minimal has no palette vars, so */
+  /* it falls back to transparent and inherits page colors. */
+  /* ------------------------------------------------------------ */
+
+  .theme-listing {
+    background: var(--t-bg, transparent);
+    color: var(--t-ink, inherit);
+    border-radius: 28px;
+    padding: clamp(1rem, 3vw, 2rem);
+  }
+
+  .theme-listing-title {
+    color: var(--t-ink, #171717);
+  }
+
+  .theme-listing-eyebrow {
+    color: var(--t-muted, #737373);
+  }
+
+  .theme-listing input {
+    color: var(--t-ink, inherit);
+  }
+
+  .theme-listing input::placeholder {
+    color: var(--t-muted, #a3a3a3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .theme-reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    .theme-card-img,
+    .group:hover .theme-card-img {
+      transition: none;
+      transform: none;
+    }
+
+    .animate-theme-float,
+    .animate-theme-drift,
+    .animate-theme-marquee,
+    .theme-shine::after {
+      animation: none;
+    }
+  }
+
   /* Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none;

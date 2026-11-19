@@ -13,6 +13,8 @@
     "test": "turbo test",
     "postinstall": "patch-package",
     "brand:dashboard": "node brand.cjs",
+  "reset:local": "node scripts/reset-local.mjs",
+  "load:local": "node scripts/load-local.mjs",
     "backend:seed": "turbo seed --filter=@dtc/backend",
     "backend:dev": "turbo dev --filter=@dtc/backend",
     "storefront:dev": "turbo dev --filter=@dtc/storefront"

@@ -36,7 +36,7 @@ export default async function initial_data_seed({
     ModuleRegistrationName.FULFILLMENT
   );
 
-  const countries = ["gb", "de", "dk", "se", "fr", "es", "it"];
+  const countries = ["ng"];
 
   logger.info("Seeding store data...");
   const {
@@ -82,12 +82,8 @@ export default async function initial_data_seed({
           name: "Default Store",
           supported_currencies: [
             {
-              currency_code: "eur",
+              currency_code: "ngn",
               is_default: true,
-            },
-            {
-              currency_code: "usd",
-              is_default: false,
             },
           ],
           default_sales_channel_id: defaultSalesChannel.id,
@@ -101,8 +97,8 @@ export default async function initial_data_seed({
     input: {
       regions: [
         {
-          name: "Europe",
-          currency_code: "eur",
+          name: "Nigeria",
+          currency_code: "ngn",
           countries,
           payment_providers: ["pp_system_default"],
           metadata: DEFAULT_REGION_STORE_POLICIES,
@@ -129,10 +125,10 @@ export default async function initial_data_seed({
     input: {
       locations: [
         {
-          name: "European Warehouse",
+          name: "Nigeria Warehouse",
           address: {
-            city: "Copenhagen",
-            country_code: "DK",
+            city: "Lagos",
+            country_code: "NG",
             address_1: "",
           },
         },
@@ -159,38 +155,14 @@ export default async function initial_data_seed({
   const shippingProfile = shippingProfileResult[0];
 
   const fulfillmentSet = await fulfillmentModuleService.createFulfillmentSets({
-    name: "European Warehouse delivery",
+    name: "Nigeria Warehouse delivery",
     type: "shipping",
     service_zones: [
       {
-        name: "Europe",
+        name: "Nigeria",
         geo_zones: [
           {
-            country_code: "gb",
-            type: "country",
-          },
-          {
-            country_code: "de",
-            type: "country",
-          },
-          {
-            country_code: "dk",
-            type: "country",
-          },
-          {
-            country_code: "se",
-            type: "country",
-          },
-          {
-            country_code: "fr",
-            type: "country",
-          },
-          {
-            country_code: "es",
-            type: "country",
-          },
-          {
-            country_code: "it",
+            country_code: "ng",
             type: "country",
           },
         ],
@@ -217,21 +189,17 @@ export default async function initial_data_seed({
         shipping_profile_id: shippingProfile.id,
         type: {
           label: "Standard",
-          description: "Ship in 2-3 days.",
+          description: "Ship in 2-5 days.",
           code: "standard",
         },
         prices: [
           {
-            currency_code: "usd",
-            amount: 10,
-          },
-          {
-            currency_code: "eur",
-            amount: 10,
+            currency_code: "ngn",
+            amount: 2500,
           },
           {
             region_id: region.id,
-            amount: 10,
+            amount: 2500,
           },
         ],
         rules: [
@@ -255,21 +223,17 @@ export default async function initial_data_seed({
         shipping_profile_id: shippingProfile.id,
         type: {
           label: "Express",
-          description: "Ship in 24 hours.",
+          description: "Ship in 1-2 days.",
           code: "express",
         },
         prices: [
           {
-            currency_code: "usd",
-            amount: 10,
-          },
-          {
-            currency_code: "eur",
-            amount: 10,
+            currency_code: "ngn",
+            amount: 5000,
           },
           {
             region_id: region.id,
-            amount: 10,
+            amount: 5000,
           },
         ],
         rules: [
@@ -371,161 +335,58 @@ export default async function initial_data_seed({
               url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-white-back.png",
             },
           ],
-          options: [
-            { id: sizeOption.id },
-            { id: colorOption.id },
-          ],
+          options: [{ id: sizeOption.id }, { id: colorOption.id }],
           variants: [
             {
               title: "S / Black",
               sku: "SHIRT-S-BLACK",
-              options: {
-                Size: "S",
-                Color: "Black",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "S", Color: "Black" },
+              prices: [{ amount: 15000, currency_code: "ngn" }],
             },
             {
               title: "S / White",
               sku: "SHIRT-S-WHITE",
-              options: {
-                Size: "S",
-                Color: "White",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "S", Color: "White" },
+              prices: [{ amount: 15000, currency_code: "ngn" }],
             },
             {
               title: "M / Black",
               sku: "SHIRT-M-BLACK",
-              options: {
-                Size: "M",
-                Color: "Black",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "M", Color: "Black" },
+              prices: [{ amount: 15000, currency_code: "ngn" }],
             },
             {
               title: "M / White",
               sku: "SHIRT-M-WHITE",
-              options: {
-                Size: "M",
-                Color: "White",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "M", Color: "White" },
+              prices: [{ amount: 15000, currency_code: "ngn" }],
             },
             {
               title: "L / Black",
               sku: "SHIRT-L-BLACK",
-              options: {
-                Size: "L",
-                Color: "Black",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "L", Color: "Black" },
+              prices: [{ amount: 15000, currency_code: "ngn" }],
             },
             {
               title: "L / White",
               sku: "SHIRT-L-WHITE",
-              options: {
-                Size: "L",
-                Color: "White",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "L", Color: "White" },
+              prices: [{ amount: 15000, currency_code: "ngn" }],
             },
             {
               title: "XL / Black",
               sku: "SHIRT-XL-BLACK",
-              options: {
-                Size: "XL",
-                Color: "Black",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "XL", Color: "Black" },
+              prices: [{ amount: 15000, currency_code: "ngn" }],
             },
             {
               title: "XL / White",
               sku: "SHIRT-XL-WHITE",
-              options: {
-                Size: "XL",
-                Color: "White",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "XL", Color: "White" },
+              prices: [{ amount: 15000, currency_code: "ngn" }],
             },
           ],
-          sales_channels: [
-            {
-              id: defaultSalesChannel.id,
-            },
-          ],
+          sales_channels: [{ id: defaultSalesChannel.id }],
         },
         {
           title: "Medusa Sweatshirt",
@@ -551,77 +412,29 @@ export default async function initial_data_seed({
             {
               title: "S",
               sku: "SWEATSHIRT-S",
-              options: {
-                Size: "S",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "S" },
+              prices: [{ amount: 25000, currency_code: "ngn" }],
             },
             {
               title: "M",
               sku: "SWEATSHIRT-M",
-              options: {
-                Size: "M",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "M" },
+              prices: [{ amount: 25000, currency_code: "ngn" }],
             },
             {
               title: "L",
               sku: "SWEATSHIRT-L",
-              options: {
-                Size: "L",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "L" },
+              prices: [{ amount: 25000, currency_code: "ngn" }],
             },
             {
               title: "XL",
               sku: "SWEATSHIRT-XL",
-              options: {
-                Size: "XL",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "XL" },
+              prices: [{ amount: 25000, currency_code: "ngn" }],
             },
           ],
-          sales_channels: [
-            {
-              id: defaultSalesChannel.id,
-            },
-          ],
+          sales_channels: [{ id: defaultSalesChannel.id }],
         },
         {
           title: "Medusa Sweatpants",
@@ -647,77 +460,29 @@ export default async function initial_data_seed({
             {
               title: "S",
               sku: "SWEATPANTS-S",
-              options: {
-                Size: "S",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "S" },
+              prices: [{ amount: 20000, currency_code: "ngn" }],
             },
             {
               title: "M",
               sku: "SWEATPANTS-M",
-              options: {
-                Size: "M",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "M" },
+              prices: [{ amount: 20000, currency_code: "ngn" }],
             },
             {
               title: "L",
               sku: "SWEATPANTS-L",
-              options: {
-                Size: "L",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "L" },
+              prices: [{ amount: 20000, currency_code: "ngn" }],
             },
             {
               title: "XL",
               sku: "SWEATPANTS-XL",
-              options: {
-                Size: "XL",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "XL" },
+              prices: [{ amount: 20000, currency_code: "ngn" }],
             },
           ],
-          sales_channels: [
-            {
-              id: defaultSalesChannel.id,
-            },
-          ],
+          sales_channels: [{ id: defaultSalesChannel.id }],
         },
         {
           title: "Medusa Shorts",
@@ -743,77 +508,29 @@ export default async function initial_data_seed({
             {
               title: "S",
               sku: "SHORTS-S",
-              options: {
-                Size: "S",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "S" },
+              prices: [{ amount: 12000, currency_code: "ngn" }],
             },
             {
               title: "M",
               sku: "SHORTS-M",
-              options: {
-                Size: "M",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "M" },
+              prices: [{ amount: 12000, currency_code: "ngn" }],
             },
             {
               title: "L",
               sku: "SHORTS-L",
-              options: {
-                Size: "L",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "L" },
+              prices: [{ amount: 12000, currency_code: "ngn" }],
             },
             {
               title: "XL",
               sku: "SHORTS-XL",
-              options: {
-                Size: "XL",
-              },
-              prices: [
-                {
-                  amount: 10,
-                  currency_code: "eur",
-                },
-                {
-                  amount: 15,
-                  currency_code: "usd",
-                },
-              ],
+              options: { Size: "XL" },
+              prices: [{ amount: 12000, currency_code: "ngn" }],
             },
           ],
-          sales_channels: [
-            {
-              id: defaultSalesChannel.id,
-            },
-          ],
+          sales_channels: [{ id: defaultSalesChannel.id }],
         },
       ],
     },

@@ -1,7 +1,6 @@
 import { Metadata } from "next"
 
 import { getStoreName } from "@lib/util/site"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { PolicyPage } from "@modules/policies/templates"
 
 export const dynamic = "force-dynamic"
@@ -59,12 +58,14 @@ export default function PlatformPage() {
       <h2 className="text-xl-semi">Want a store like this?</h2>
       <p>
         Business owners can get a dedicated online store set up in 24 hours.{" "}
-        <LocalizedClientLink
-          href="/online-store"
+        <a
+          href="https://dashboard.flowcheq.com"
+          target="_blank"
+          rel="noopener noreferrer"
           className="underline underline-offset-4"
         >
           See how it works
-        </LocalizedClientLink>
+        </a>
         .
       </p>
     </PolicyPage>

@@ -12,6 +12,11 @@
  * logged.
  */
 import { TenantConfig } from "@flowcheq/tenant-config"
+import {
+  STOREFRONT_SETTINGS_METADATA_KEY,
+  storefrontSettingsSchema,
+  storefrontSettingsToMetadata,
+} from "@flowcheq/storefront-config"
 import type { ExecArgs } from "@medusajs/framework/types"
 import {
   ContainerRegistrationKeys,
@@ -206,8 +211,104 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
   // --- Store ------------------------------------------------------------------
   const [store] = await storeService.listStores({}, { take: 1 })
 
+  const buildDefaultStorefrontMetadata = () => {
+    const brandName = config.businessName
+    const primaryColor = config.brand?.primaryColor || "#111111"
+    const logoUrl = config.brand?.logoUrl || ""
+
+    const defaults = storefrontSettingsSchema.parse({
+      brand: {
+        name: brandName,
+        tagline: `Quality products from ${brandName}`,
+        description: `${brandName} brings you a curated selection of products. Shop online, pay securely, and get your order delivered.`,
+        vendorName: brandName,
+        logoUrl,
+        faviconUrl: "",
+        primaryColor,
+        accentColor: "#111111",
+        fontFamily: "sans",
+        cornerRadius: "md",
+      },
+      theme: { mode: "light", preset: "minimal" },
+      layout: {
+        headerStyle: "centered",
+        footerStyle: "compact",
+        homepageHeroEnabled: true,
+        homepageFeaturedEnabled: true,
+      },
+      homepage: {
+        hero: {
+          enabled: true,
+          eyebrow: "Welcome",
+          title: brandName,
+          heading: `Shop ${brandName}`,
+          description:
+            "Discover our latest products, add your favourites to cart, and check out securely. New arrivals and bestsellers are just a click away.",
+          primaryCta: "Shop now",
+          secondaryCta: "Browse all",
+          imageUrl: "",
+        },
+        showcase: {
+          enabled: true,
+          label: "Featured",
+          badge: "New",
+          eyebrow: "Handpicked for you",
+          title: "Popular picks",
+          price: "",
+          imageUrl: "",
+          href: "/store",
+        },
+        featuredEnabled: true,
+        stats: [],
+      },
+      navigation: {
+        links: [
+          { label: "Home", href: "/" },
+          { label: "Shop", href: "/store" },
+          { label: "Account", href: "/account" },
+        ],
+      },
+      features: {
+        announcementBarEnabled: true,
+        announcementBarText: `Welcome to ${brandName}. Shop our latest products online.`,
+        announcementBarCtaLabel: "Shop now",
+        announcementBarCtaHref: "/store",
+        showSearch: true,
+        showAccount: true,
+        showLocaleSelector: true,
+        showCountrySelector: true,
+        whatsappEnabled: false,
+        whatsappNumber: "",
+        newsletterEnabled: false,
+      },
+      footer: {
+        contact: {
+          email: config.ownerEmail || "",
+          phone: "",
+          address: "",
+          hours: "",
+        },
+        socials: [],
+        legal: [],
+        copyright: `© ${new Date().getFullYear()} ${brandName}. All rights reserved.`,
+        poweredBy: true,
+      },
+      seo: {
+        defaultTitle: brandName,
+        titleTemplate: `%s | ${brandName}`,
+        description: `Shop ${brandName} online. Browse products, place orders, and pay securely.`,
+        keywords: [brandName, "online store", "shop", "ecommerce"],
+        ogImageUrl: logoUrl,
+      },
+    })
+
+    return storefrontSettingsToMetadata(defaults)
+  }
+
+  let activeStore = store
+
   if (!store) {
-    await createStoresWorkflow(container).run({
+    const { result } = await createStoresWorkflow(container).run({
       input: {
         stores: [
           {
@@ -217,14 +318,22 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
             ],
             default_sales_channel_id: salesChannel.id,
             default_region_id: regionId,
+            metadata: buildDefaultStorefrontMetadata(),
           },
         ],
       },
     })
 
-    logger.info(`Created store "${config.businessName}".`)
+    activeStore = result[0]
+    logger.info(`Created store "${config.businessName}" with default storefront settings.`)
   } else {
-    await updateStoresWorkflow(container).run({
+    const existingMetadata = (store.metadata ?? {}) as Record<string, unknown>
+    const hasStorefrontSettings = Boolean(existingMetadata[STOREFRONT_SETTINGS_METADATA_KEY])
+    const nextMetadata = hasStorefrontSettings
+      ? existingMetadata
+      : { ...existingMetadata, ...buildDefaultStorefrontMetadata() }
+
+    const { result } = await updateStoresWorkflow(container).run({
       input: {
         selector: { id: store.id },
         update: {
@@ -234,11 +343,17 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
           ],
           default_sales_channel_id: salesChannel.id,
           default_region_id: regionId,
+          ...(hasStorefrontSettings ? {} : { metadata: nextMetadata }),
         },
       },
     })
 
-    logger.info(`Updated store "${config.businessName}".`)
+    activeStore = result[0] ?? store
+    if (hasStorefrontSettings) {
+      logger.info(`Updated store "${config.businessName}" (kept existing storefront settings).`)
+    } else {
+      logger.info(`Updated store "${config.businessName}" and seeded default storefront settings.`)
+    }
   }
 
   // --- Publishable API key ----------------------------------------------------

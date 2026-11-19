@@ -5,13 +5,23 @@
   "description": "Shared zod schemas for Flowcheq tenant storefront settings.",
   "license": "MIT",
   "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "files": [
     "dist"
   ],
   "scripts": {
     "prepare": "npm run build",
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run build:types && node build.mjs",
+    "build:types": "tsc -p tsconfig.json",
     "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit"
   },
@@ -19,6 +29,7 @@
     "zod": "^4.2.0"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "typescript": "^5.6.2",
     "vitest": "^4.0.0"
   },

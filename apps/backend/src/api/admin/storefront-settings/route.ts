@@ -1,12 +1,15 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
+import {
+  STOREFRONT_SETTINGS_METADATA_KEY,
+  storefrontSettingsSchema,
+} from "@flowcheq/storefront-config"
 
 import { storeSettingsHub } from "../../../lib/store-settings-hub"
 import {
   getStorefrontSettings,
   getStorefrontSettingsMetadata,
 } from "../../../lib/storefront-settings"
-import { storefrontSettingsSchema } from "@flowcheq/storefront-config"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const storeModule = req.scope.resolve(Modules.STORE)
@@ -17,7 +20,24 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  res.json(getStorefrontSettings(store))
+  const existingMetadata = (store.metadata ?? {}) as Record<string, unknown>
+  const hasPersistedSettings = Boolean(existingMetadata[STOREFRONT_SETTINGS_METADATA_KEY])
+  const settings = getStorefrontSettings(store)
+
+  if (!hasPersistedSettings) {
+    // Persist computed defaults once so the storefront is never scanty and
+    // staff always have a concrete, editable settings record in the backend.
+    const metadata = {
+      ...existingMetadata,
+      ...getStorefrontSettingsMetadata(settings),
+    }
+
+    await storeModule.updateStores(store.id, { metadata })
+    res.json(getStorefrontSettings({ ...store, metadata }))
+    return
+  }
+
+  res.json(settings)
 }
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
@@ -28,7 +48,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     res.status(400).json({
       message: "Invalid storefront settings",
       errors: parsed.error.issues.map((issue) => ({
-        path: issue.path,
+        path: issue.path.join("."),
         message: issue.message,
       })),
     })
@@ -48,10 +68,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     ...getStorefrontSettingsMetadata(parsed.data),
   }
 
-  await storeModule.updateStores(store.id, {
-    metadata,
-  })
-
+  await storeModule.updateStores(store.id, { metadata })
   storeSettingsHub.publish(store.id, parsed.data)
 
   res.json(getStorefrontSettings({ ...store, metadata }))

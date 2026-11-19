@@ -143,7 +143,7 @@ export default function PurchaseForm() {
           disabled={pending}
           className="inline-flex items-center justify-center rounded-full bg-white px-7 py-4 text-sm font-medium text-neutral-900 transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0"
         >
-          {pending ? "Redirecting to payment..." : "Pay ₦150,000 and get my store"}
+          {pending ? "Redirecting to payment..." : "Pay ₦154,900/yr and get my store"}
         </button>
         <p className="text-xs leading-5 text-white/50">
           Secure payment via Paystack. We&apos;ll log your order and begin setup within 24 hours

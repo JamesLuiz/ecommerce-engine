@@ -63,7 +63,7 @@ const included = [
 const steps = [
   {
     title: "Make your payment",
-    body: "Secure your e-commerce setup for ₦150,000.",
+    body: "Secure your e-commerce setup for ₦154,900/yr.",
   },
   {
     title: "Share your business details",
@@ -110,7 +110,7 @@ const faqs = [
       "Yes. You can update products, prices, images, stock and order status from the admin dashboard.",
   },
   {
-    question: "What does the ₦150,000 cover?",
+    question: "What does the ₦154,900/yr cover?",
     answer:
       "It covers the dedicated storefront, product catalogue, order and inventory management, online payment integration, sales reporting, the admin dashboard, deployment and initial configuration.",
   },
@@ -209,8 +209,8 @@ export default function HomePage() {
                     <p className="mt-2 text-lg font-semibold tracking-[-0.04em]">24 hours</p>
                   </div>
                   <div className="rounded-2xl bg-[#f5f3ef] p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-neutral-600">One-time</p>
-                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em]">₦150,000</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-neutral-600">Per year</p>
+                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em]">₦154,900</p>
                   </div>
                 </div>
               </div>
@@ -221,7 +221,7 @@ export default function HomePage() {
 
       <section className="border-b border-black/5 bg-white">
         <div className="content-container grid gap-4 py-6 text-sm text-neutral-600 sm:grid-cols-3">
-          <p>₦150,000 one-time setup</p>
+          <p>₦154,900/yr setup</p>
           <p>Live within 24 hours</p>
           <p>No developer needed</p>
         </div>
@@ -414,10 +414,10 @@ export default function HomePage() {
                 December offer
               </span>
               <h2 className="mt-6 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.06em] md:text-5xl">
-                Get your own e-commerce store for ₦150,000.
+                Get your own e-commerce store for ₦154,900/yr.
               </h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-white/60">
-                A one-time setup fee. Share your details, pay securely, and we&apos;ll configure and
+                An annual plan of ₦154,900. Share your details, pay securely, and we&apos;ll configure and
                 deploy your dedicated store within 24 hours of receiving your details and payment.
               </p>
 
@@ -425,8 +425,8 @@ export default function HomePage() {
             </div>
 
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-6 md:p-8">
-              <p className="text-sm text-white/50">One-time setup</p>
-              <p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">₦150,000</p>
+              <p className="text-sm text-white/50">Per year</p>
+              <p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">₦154,900</p>
               <p className="mt-2 text-sm text-white/50">Everything you need to start selling online.</p>
 
               <ul className="mt-7 space-y-3">

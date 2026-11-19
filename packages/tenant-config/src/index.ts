@@ -35,7 +35,7 @@ export const TenantConfig = z.object({
   businessName: z.string().min(2).max(80),
   ownerEmail: z.string().email(),
   plan: z.enum(PLANS),
-  currency: z.string().length(3).default("USD"),
+  currency: z.string().length(3).default("NGN"),
   region: z.enum(REGIONS).default("ng"),
   brand: z
     .object({

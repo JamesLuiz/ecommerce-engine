@@ -8,9 +8,12 @@ import { SortOptions } from "@modules/store/components/refinement-list/sort-prod
 import PaginatedProducts from "@modules/store/templates/paginated-products"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HttpTypes } from "@medusajs/types"
+import { hydrateRuntimeBrandConfig } from "@lib/runtime-config"
 import { OptionValueIds } from "@lib/util/product-option-filters"
+import { resolveLayoutId } from "@modules/themes/registry"
+import { ThemedListingHeading } from "@modules/themes/server-cards"
 
-export default function CategoryTemplate({
+export default async function CategoryTemplate({
   category,
   sortBy,
   page,
@@ -39,9 +42,13 @@ export default function CategoryTemplate({
 
   getParents(category)
 
+  const { settings } = await hydrateRuntimeBrandConfig()
+  const layoutId = resolveLayoutId(settings?.theme?.preset)
+
   return (
     <div
-      className="flex flex-col small:flex-row small:items-start py-6 content-container"
+      className="theme-listing flex flex-col small:flex-row small:items-start py-6 content-container"
+      data-layout={layoutId}
       data-testid="category-container"
     >
       <RefinementList
@@ -50,9 +57,9 @@ export default function CategoryTemplate({
         hideOptionsPicker
       />
       <div className="w-full">
-        <div className="flex flex-row mb-8 text-2xl-semi gap-4">
-          {parents &&
-            parents.map((parent) => (
+        {parents && parents.length > 0 && (
+          <div className="flex flex-row mb-4 text-2xl-semi gap-4">
+            {parents.map((parent) => (
               <span key={parent.id} className="text-ui-fg-subtle">
                 <LocalizedClientLink
                   className="mr-4 hover:text-black"
@@ -64,8 +71,13 @@ export default function CategoryTemplate({
                 /
               </span>
             ))}
-          <h1 data-testid="category-page-title">{category.name}</h1>
-        </div>
+          </div>
+        )}
+        <ThemedListingHeading
+          layoutId={layoutId}
+          title={category.name}
+          testId="category-page-title"
+        />
         {category.description && (
           <div className="mb-8 text-base-regular">
             <p>{category.description}</p>

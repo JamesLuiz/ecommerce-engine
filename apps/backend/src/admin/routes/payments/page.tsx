@@ -47,6 +47,28 @@ type Settlement = {
   verified_at: string
 }
 
+type PaymentConfig = {
+  provider: "paystack"
+  mode: "platform" | "direct"
+  enabled: boolean
+  direct: {
+    public_key: string
+    secret_key_set: boolean
+    secret_key_masked: string | null
+    webhook_secret_set: boolean
+    webhook_secret_masked: string | null
+    ready: boolean
+  }
+  platform: {
+    gateway_configured: boolean
+  }
+  links: {
+    webhook_url: string
+    callback_url: string
+    provider_id: string
+  }
+}
+
 const formatMoney = (kobo: number, currency = "NGN") => {
   const major = (kobo || 0) / 100
   return new Intl.NumberFormat("en-NG", {
@@ -85,8 +107,44 @@ const readErrorMessage = async (res: Response, fallback: string): Promise<string
   }
 }
 
+const CopyField = ({ label, value }: { label: string; value: string }) => {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      toast.success(`${label} copied`)
+    } catch {
+      toast.error(`Could not copy ${label.toLowerCase()}`)
+    }
+  }
+
+  return (
+    <div>
+      <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 6, display: "block" }}>
+        {label}
+      </Text>
+      <div style={{ display: "flex", gap: 8 }}>
+        <Input value={value} readOnly style={{ fontFamily: "monospace", fontSize: 12 }} />
+        <Button type="button" variant="secondary" onClick={() => void copy()}>
+          Copy
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 const PaymentsPage = () => {
-  const [activeTab, setActiveTab] = useState("transactions")
+  const [activeTab, setActiveTab] = useState("configuration")
+
+  // Provider config state
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null)
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false)
+  const [isSavingConfig, setIsSavingConfig] = useState(false)
+  const [mode, setMode] = useState<"platform" | "direct">("platform")
+  const [publicKey, setPublicKey] = useState("")
+  const [secretKey, setSecretKey] = useState("")
+  const [webhookSecret, setWebhookSecret] = useState("")
+  const [clearSecretKey, setClearSecretKey] = useState(false)
+  const [clearWebhookSecret, setClearWebhookSecret] = useState(false)
 
   // Transactions state
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -98,6 +156,7 @@ const PaymentsPage = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isLoadingTx, setIsLoadingTx] = useState(false)
+  const [txError, setTxError] = useState<string | null>(null)
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -118,20 +177,86 @@ const PaymentsPage = () => {
   const resolveRequestId = useRef(0)
 
   const bankOptions = useMemo(() => {
-    const unique = Array.from(
-      new Map(banks.map((bank): [string, Bank] => [bank.code, bank])).values(),
-    )
+    const unique = Array.from(new Map(banks.map((bank): [string, Bank] => [bank.code, bank])).values())
     const query = bankSearch.trim().toLowerCase()
-
-    if (!query) {
-      return unique
-    }
-
+    if (!query) return unique
     return unique.filter(
-      (bank) =>
-        bank.name.toLowerCase().includes(query) || bank.code.toLowerCase().includes(query),
+      (bank) => bank.name.toLowerCase().includes(query) || bank.code.toLowerCase().includes(query)
     )
   }, [banks, bankSearch])
+
+  const fetchPaymentConfig = async () => {
+    setIsLoadingConfig(true)
+    try {
+      const res = await fetch("/admin/payment/config", { credentials: "same-origin" })
+      if (!res.ok) {
+        toast.error(await readErrorMessage(res, "Failed to load payment configuration"))
+        return
+      }
+      const data = (await res.json()) as PaymentConfig
+      setPaymentConfig(data)
+      setMode(data.mode)
+      setPublicKey(data.direct?.public_key || "")
+      setSecretKey("")
+      setWebhookSecret("")
+      setClearSecretKey(false)
+      setClearWebhookSecret(false)
+    } catch {
+      toast.error("Failed to load payment configuration")
+    } finally {
+      setIsLoadingConfig(false)
+    }
+  }
+
+  useEffect(() => {
+    void fetchPaymentConfig()
+  }, [])
+
+  const handleSaveConfig = async () => {
+    setIsSavingConfig(true)
+    try {
+      const body: Record<string, any> = {
+        mode,
+        public_key: mode === "direct" ? publicKey.trim() : null,
+      }
+
+      if (mode === "direct") {
+        if (secretKey.trim()) body.secret_key = secretKey.trim()
+        else if (clearSecretKey) body.secret_key = null
+
+        if (webhookSecret.trim()) body.webhook_secret = webhookSecret.trim()
+        else if (clearWebhookSecret) body.webhook_secret = null
+      } else {
+        // keep stored direct credentials when switching back to platform
+      }
+
+      const res = await fetch("/admin/payment/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        toast.error(await readErrorMessage(res, "Failed to save payment configuration"))
+        return
+      }
+
+      const data = (await res.json()) as PaymentConfig
+      setPaymentConfig(data)
+      setMode(data.mode)
+      setPublicKey(data.direct?.public_key || "")
+      setSecretKey("")
+      setWebhookSecret("")
+      setClearSecretKey(false)
+      setClearWebhookSecret(false)
+      toast.success("Payment configuration saved")
+    } catch {
+      toast.error("Failed to save payment configuration")
+    } finally {
+      setIsSavingConfig(false)
+    }
+  }
 
   // Search debounce
   useEffect(() => {
@@ -142,6 +267,7 @@ const PaymentsPage = () => {
   // Load Transactions
   const fetchTransactions = async () => {
     setIsLoadingTx(true)
+    setTxError(null)
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -158,9 +284,13 @@ const PaymentsPage = () => {
         setTransactions(data.data || [])
         setTotalCount(data.total || 0)
         setSummary(data.summary || { total_count: 0, total_amount_success: 0, total_fees: 0 })
+      } else {
+        const message = await readErrorMessage(res, "Failed to load transactions")
+        setTxError(message)
+        setTransactions([])
       }
     } catch {
-      toast.error("Failed to load transactions")
+      setTxError("Failed to load transactions")
     } finally {
       setIsLoadingTx(false)
     }
@@ -168,7 +298,7 @@ const PaymentsPage = () => {
 
   useEffect(() => {
     if (activeTab === "transactions") {
-      fetchTransactions()
+      void fetchTransactions()
     }
   }, [activeTab, page, debouncedSearch, statusFilter])
 
@@ -211,22 +341,15 @@ const PaymentsPage = () => {
 
   useEffect(() => {
     if (activeTab === "settlement") {
-      fetchSettlementData()
+      void fetchSettlementData()
     }
   }, [activeTab])
 
-  // Auto-resolve the account holder name as soon as the bank is selected and
-  // the account number reaches 10 digits, before the settlement is saved.
-  // Paystack test mode rate-limits /bank/resolve; when that limit is hit the
-  // error is shown inline and the subaccount call validates on save instead.
   useEffect(() => {
     setResolveError("")
-
     if (accountNumber.length === 10 && selectedBankCode) {
-      handleResolve(selectedBankCode, accountNumber)
+      void handleResolve(selectedBankCode, accountNumber)
     } else {
-      // Invalidate any in-flight resolve so a late response cannot repopulate
-      // the holder name after the input changed.
       resolveRequestId.current += 1
       setResolvedAccountName("")
       setIsResolving(false)
@@ -244,9 +367,7 @@ const PaymentsPage = () => {
         body: JSON.stringify({ bank_code: bankCode, account_number: accNum }),
       })
 
-      if (requestId !== resolveRequestId.current) {
-        return
-      }
+      if (requestId !== resolveRequestId.current) return
 
       if (res.ok) {
         const data = await res.json()
@@ -259,7 +380,7 @@ const PaymentsPage = () => {
         setResolveError(
           message.includes("Test mode daily limit")
             ? "Paystack test mode has hit its daily limit for live bank lookups. The holder name will be confirmed when you save. Switch to a live key to see it before saving."
-            : message,
+            : message
         )
       }
     } catch {
@@ -322,26 +443,205 @@ const PaymentsPage = () => {
     }
   }
 
+  const isDirectMode = (paymentConfig?.mode ?? mode) === "direct"
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px" }}>
       <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <Heading level="h1">Payments & Settlement</Heading>
           <Text size="small" className="text-ui-fg-subtle">
-            Manage transactions and configure your payout settlement bank account.
+            Configure how your store accepts Paystack payments, manage transactions, and set payout details.
           </Text>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <Tabs.List>
+          <Tabs.Trigger value="configuration">Configuration</Tabs.Trigger>
           <Tabs.Trigger value="transactions">Transactions</Tabs.Trigger>
           <Tabs.Trigger value="settlement">Settlement</Tabs.Trigger>
         </Tabs.List>
 
+        <Tabs.Content value="configuration" style={{ marginTop: 20 }}>
+          <Container style={{ padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+              <div>
+                <Heading level="h2">Paystack provider</Heading>
+                <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 4 }}>
+                  Start on the Flowcheq platform Paystack gateway, or switch to your own Paystack account later.
+                  Changes apply without redeploying your store.
+                </Text>
+              </div>
+              <Button variant="secondary" onClick={() => void fetchPaymentConfig()} disabled={isLoadingConfig}>
+                <ArrowPath className={isLoadingConfig ? "animate-spin" : ""} />
+                Refresh
+              </Button>
+            </div>
+
+            <div style={{ display: "grid", gap: 20, marginTop: 20, maxWidth: 760 }}>
+              <div style={{ maxWidth: 360 }}>
+                <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 6, display: "block" }}>
+                  Payment mode
+                </Text>
+                <Select value={mode} onValueChange={(v) => setMode(v as "platform" | "direct")}>
+                  <Select.Trigger>
+                    <Select.Value placeholder="Select mode" />
+                  </Select.Trigger>
+                  <Select.Content>
+                    <Select.Item value="platform">Platform gateway (default)</Select.Item>
+                    <Select.Item value="direct">My own Paystack account</Select.Item>
+                  </Select.Content>
+                </Select>
+                <Text size="xsmall" className="text-ui-fg-subtle" style={{ marginTop: 6, display: "block" }}>
+                  Platform gateway routes payments through Flowcheq and settles to your configured payout account.
+                  Direct mode uses your own Paystack keys and dashboard.
+                </Text>
+              </div>
+
+              {mode === "platform" && (
+                <div className="rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
+                  <Text size="small" weight="plus">Platform gateway status</Text>
+                  <Text size="small" className="text-ui-fg-subtle mt-1 block">
+                    {paymentConfig?.platform.gateway_configured
+                      ? "Gateway credentials are configured for this store. Transactions and settlement are managed in the tabs above."
+                      : "Gateway credentials are not configured for this store yet. Provisioning or environment setup is required before platform payments can work."}
+                  </Text>
+                </div>
+              )}
+
+              {mode === "direct" && (
+                <div className="grid gap-4">
+                  <div className="rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
+                    <Text size="small" weight="plus">Use your own Paystack account</Text>
+                    <Text size="small" className="text-ui-fg-subtle mt-1 block">
+                      Enter your Paystack API keys below and add the webhook URL in your Paystack dashboard. Leave
+                      secret fields blank to keep existing saved values.
+                    </Text>
+                  </div>
+
+                  <div>
+                    <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 6, display: "block" }}>
+                      Paystack public key
+                    </Text>
+                    <Input
+                      value={publicKey}
+                      onChange={(e) => setPublicKey(e.target.value)}
+                      placeholder="pk_test_... or pk_live_..."
+                    />
+                  </div>
+
+                  <div>
+                    <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 6, display: "block" }}>
+                      Paystack secret key {paymentConfig?.direct.secret_key_set ? "(saved)" : ""}
+                    </Text>
+                    <Input
+                      type="password"
+                      value={secretKey}
+                      onChange={(e) => {
+                        setSecretKey(e.target.value)
+                        if (e.target.value) setClearSecretKey(false)
+                      }}
+                      placeholder={paymentConfig?.direct.secret_key_set ? "Leave blank to keep current secret key" : "sk_test_... or sk_live_..."}
+                    />
+                    {paymentConfig?.direct.secret_key_set && (
+                      <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 13 }}>
+                        <input
+                          type="checkbox"
+                          checked={clearSecretKey}
+                          onChange={(e) => {
+                            setClearSecretKey(e.target.checked)
+                            if (e.target.checked) setSecretKey("")
+                          }}
+                        />
+                        Clear saved secret key
+                      </label>
+                    )}
+                  </div>
+
+                  <div>
+                    <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 6, display: "block" }}>
+                      Paystack webhook secret (optional) {paymentConfig?.direct.webhook_secret_set ? "(saved)" : ""}
+                    </Text>
+                    <Input
+                      type="password"
+                      value={webhookSecret}
+                      onChange={(e) => {
+                        setWebhookSecret(e.target.value)
+                        if (e.target.value) setClearWebhookSecret(false)
+                      }}
+                      placeholder={paymentConfig?.direct.webhook_secret_set ? "Leave blank to keep current value" : "Optional override; Paystack signs webhooks with your secret key by default"}
+                    />
+                    {paymentConfig?.direct.webhook_secret_set && (
+                      <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 13 }}>
+                        <input
+                          type="checkbox"
+                          checked={clearWebhookSecret}
+                          onChange={(e) => {
+                            setClearWebhookSecret(e.target.checked)
+                            if (e.target.checked) setWebhookSecret("")
+                          }}
+                        />
+                        Clear saved webhook secret
+                      </label>
+                    )}
+                  </div>
+
+                  {paymentConfig?.links && (
+                    <div className="grid gap-4 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
+                      <Heading level="h3">Paystack dashboard links</Heading>
+                      <Text size="small" className="text-ui-fg-subtle">
+                        Copy these values into your Paystack dashboard. The webhook URL must receive Paystack events for this store.
+                      </Text>
+                      <CopyField label="Webhook URL" value={paymentConfig.links.webhook_url} />
+                      <CopyField label="Callback URL" value={paymentConfig.links.callback_url} />
+                      <div>
+                        <Text size="small" className="text-ui-fg-subtle">Provider ID</Text>
+                        <Text size="small" className="mt-1 block font-mono">
+                          {paymentConfig.links.provider_id}
+                        </Text>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {mode === "platform" && paymentConfig?.links && (
+                <div className="grid gap-3 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
+                  <Heading level="h3">Integration details</Heading>
+                  <Text size="small" className="text-ui-fg-subtle">
+                    These are the configured links for this store. In platform mode, Flowcheq manages the Paystack webhook and routing.
+                  </Text>
+                  <CopyField label="Webhook URL" value={paymentConfig.links.webhook_url} />
+                  <CopyField label="Callback URL" value={paymentConfig.links.callback_url} />
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <Button onClick={() => void handleSaveConfig()} disabled={isSavingConfig || isLoadingConfig}>
+                  {isSavingConfig ? "Saving..." : "Save payment configuration"}
+                </Button>
+                {paymentConfig?.direct.ready && (
+                  <Badge color={paymentConfig.mode === "direct" ? "green" : "grey"}>
+                    Direct Paystack credentials saved
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </Container>
+        </Tabs.Content>
+
         {/* TRANSACTIONS TAB */}
         <Tabs.Content value="transactions" style={{ marginTop: 20 }}>
-          {/* Summary Strip */}
+          {isDirectMode && (
+            <div className="mb-5 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
+              <Text size="small" className="text-ui-fg-base">
+                <span className="font-medium">Direct Paystack mode:</span> transaction history in this tab is available when the platform gateway is used.
+                {" "}View and reconcile direct payments in your Paystack dashboard.
+              </Text>
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 20 }}>
             <Container style={{ padding: 16 }}>
               <Text size="small" className="text-ui-fg-subtle">Successful Volume</Text>
@@ -363,7 +663,6 @@ const PaymentsPage = () => {
             </Container>
           </div>
 
-          {/* Filter Bar */}
           <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center" }}>
             <div style={{ position: "relative", width: 280 }}>
               <Input
@@ -386,13 +685,18 @@ const PaymentsPage = () => {
                 </Select.Content>
               </Select>
             </div>
-            <Button variant="secondary" onClick={() => fetchTransactions()} disabled={isLoadingTx}>
+            <Button variant="secondary" onClick={() => void fetchTransactions()} disabled={isLoadingTx}>
               <ArrowPath className={isLoadingTx ? "animate-spin" : ""} />
               Refresh
             </Button>
           </div>
 
-          {/* Transactions Table */}
+          {txError && (
+            <div className="mb-4 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-3">
+              <Text size="small" className="text-ui-fg-error">{txError}</Text>
+            </div>
+          )}
+
           <Container style={{ padding: 0, overflow: "hidden" }}>
             <Table>
               <Table.Header>
@@ -418,11 +722,7 @@ const PaymentsPage = () => {
                   </Table.Row>
                 ) : (
                   transactions.map((tx) => (
-                    <Table.Row
-                      key={tx.reference}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => openTxDrawer(tx)}
-                    >
+                    <Table.Row key={tx.reference} style={{ cursor: "pointer" }} onClick={() => void openTxDrawer(tx)}>
                       <Table.Cell>{formatDate(tx.created_at)}</Table.Cell>
                       <Table.Cell style={{ fontFamily: "monospace" }}>{tx.reference}</Table.Cell>
                       <Table.Cell>{tx.customer_email}</Table.Cell>
@@ -435,9 +735,7 @@ const PaymentsPage = () => {
                       </Table.Cell>
                       <Table.Cell>{tx.channel || "-"}</Table.Cell>
                       <Table.Cell>
-                        <StatusBadge color={statusColor(tx.status)}>
-                          {tx.status}
-                        </StatusBadge>
+                        <StatusBadge color={statusColor(tx.status)}>{tx.status}</StatusBadge>
                       </Table.Cell>
                     </Table.Row>
                   ))
@@ -446,26 +744,15 @@ const PaymentsPage = () => {
             </Table>
           </Container>
 
-          {/* Pagination */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
             <Text size="small" className="text-ui-fg-subtle">
               Total {totalCount} transactions
             </Text>
             <div style={{ display: "flex", gap: 8 }}>
-              <Button
-                variant="secondary"
-                size="small"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
+              <Button variant="secondary" size="small" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                 Previous
               </Button>
-              <Button
-                variant="secondary"
-                size="small"
-                disabled={page * perPage >= totalCount}
-                onClick={() => setPage((p) => p + 1)}
-              >
+              <Button variant="secondary" size="small" disabled={page * perPage >= totalCount} onClick={() => setPage((p) => p + 1)}>
                 Next
               </Button>
             </div>
@@ -474,218 +761,153 @@ const PaymentsPage = () => {
 
         {/* SETTLEMENT TAB */}
         <Tabs.Content value="settlement" style={{ marginTop: 20 }}>
-          {!hasSettlement && (
-            <div style={{
-              background: "#FFFBEB",
-              border: "1px solid #FCD34D",
-              color: "#92400E",
-              padding: 16,
-              borderRadius: 8,
-              marginBottom: 20,
-            }}>
-              <strong>Action required:</strong> Payments are disabled until you add a settlement bank account.
-            </div>
-          )}
-
-          {/* Current Settlement Card */}
-          {settlement && (
-            <Container style={{ padding: 24, marginBottom: 24 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <Text size="small" className="text-ui-fg-subtle">Active Settlement Account</Text>
-                  <Heading level="h2" style={{ marginTop: 4 }}>
-                    {settlement.bank_name}
-                  </Heading>
-                  <Text style={{ marginTop: 4, fontWeight: 500 }}>
-                    {settlement.account_name}
-                  </Text>
-                  <Text className="text-ui-fg-subtle" style={{ fontFamily: "monospace", marginTop: 4 }}>
-                    •••• {settlement.account_number_last4}
-                  </Text>
-                  <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 8 }}>
-                    Verified on {formatDate(settlement.verified_at)}
-                  </Text>
-                </div>
-                <Badge color="green">Active</Badge>
-              </div>
+          {isDirectMode ? (
+            <Container style={{ padding: 24 }}>
+              <Heading level="h2">Settlement</Heading>
+              <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 8 }}>
+                In direct Paystack mode, payouts and settlement accounts are managed in your own Paystack dashboard.
+                Switch to the platform gateway if you want Flowcheq to manage settlement routing for this store.
+              </Text>
             </Container>
-          )}
-
-          {/* Update Settlement Form */}
-          <Container style={{ padding: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-              <div>
-                <Heading level="h2" style={{ marginBottom: 8 }}>
-                  {settlement ? "Change Settlement Account" : "Add Settlement Bank Account"}
-                </Heading>
-                <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 20 }}>
-                  All customer payments will settle directly to this account via Paystack.
-                </Text>
-              </div>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={() => fetchSettlementData()}
-                disabled={isLoadingBanks}
-              >
-                <ArrowPath className={isLoadingBanks ? "animate-spin" : ""} />
-                Refresh banks
-              </Button>
-            </div>
-
-            <div style={{ display: "grid", gap: 16, maxWidth: 480 }}>
-              <div>
-                <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>
-                  Bank
-                </label>
-                <Input
-                  placeholder="Search banks..."
-                  value={bankSearch}
-                  onChange={(e) => setBankSearch(e.target.value)}
-                  style={{ marginBottom: 8 }}
-                />
-                <Select value={selectedBankCode} onValueChange={(val) => {
-                  setSelectedBankCode(val)
-                  setResolvedAccountName("")
-                  setBankSearch("")
-                }}>
-                  <Select.Trigger>
-                    <Select.Value placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"} />
-                  </Select.Trigger>
-                  <Select.Content>
-                    {bankOptions.map((b) => (
-                      <Select.Item key={b.code} value={b.code}>
-                        {b.name}
-                      </Select.Item>
-                    ))}
-                  </Select.Content>
-                </Select>
-                {!isLoadingBanks && banks.length === 0 && (
-                  <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 6 }}>
-                    Could not load banks from Paystack. Use Refresh banks to try again.
-                  </Text>
-                )}
-                {!isLoadingBanks && banks.length > 0 && bankOptions.length === 0 && (
-                  <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 6 }}>
-                    No bank matches "{bankSearch}".
-                  </Text>
-                )}
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>
-                  10-Digit Account Number
-                </label>
-                <Input
-                  maxLength={10}
-                  placeholder="0123456789"
-                  value={accountNumber}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "")
-                    setAccountNumber(digits)
-                  }}
-                />
-              </div>
-
-              {testMode === true && (
-                <div style={{
-                  padding: "12px 16px",
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  borderRadius: 6,
-                }}>
-                  <Text size="small" className="text-ui-fg-subtle">
-                    Paystack test mode limits live account lookups. If the holder name does
-                    not appear automatically, Paystack confirms it when you save.
+          ) : (
+            <>
+              {!hasSettlement && (
+                <div className="mb-5 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
+                  <Text size="small" className="text-ui-fg-base">
+                    <span className="font-medium">Action required:</span> Payments are disabled until you add a settlement bank account.
                   </Text>
                 </div>
               )}
 
-              {isResolving && (
-                <Text size="small" className="text-ui-fg-subtle">
-                  Verifying account with bank...
-                </Text>
+              {settlement && (
+                <Container style={{ padding: 24, marginBottom: 24 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <Text size="small" className="text-ui-fg-subtle">Active Settlement Account</Text>
+                      <Heading level="h2" style={{ marginTop: 4 }}>{settlement.bank_name}</Heading>
+                      <Text style={{ marginTop: 4, fontWeight: 500 }}>{settlement.account_name}</Text>
+                      <Text className="text-ui-fg-subtle" style={{ fontFamily: "monospace", marginTop: 4 }}>
+                        •••• {settlement.account_number_last4}
+                      </Text>
+                      <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 8 }}>
+                        Verified on {formatDate(settlement.verified_at)}
+                      </Text>
+                    </div>
+                    <Badge color="green">Active</Badge>
+                  </div>
+                </Container>
               )}
 
-              {resolveError && (
-                <div style={{
-                  padding: "12px 16px",
-                  background: "#FEF2F2",
-                  border: "1px solid #FECACA",
-                  borderRadius: 6,
-                }}>
-                  <Text size="small" className="text-ui-fg-subtle">{resolveError}</Text>
-                </div>
-              )}
-
-              {resolvedAccountName && (
-                <div style={{
-                  padding: "12px 16px",
-                  background: "#F0FDF4",
-                  border: "1px solid #BBF7D0",
-                  borderRadius: 6,
-                }}>
-                  <Text size="small" className="text-ui-fg-subtle">Account Holder Name</Text>
-                  <Text style={{ fontWeight: 600, color: "#166534" }}>{resolvedAccountName}</Text>
-                </div>
-              )}
-
-              <div style={{ marginTop: 12 }}>
-                <Button
-                  disabled={
-                    (!resolvedAccountName && testMode !== true) ||
-                    isResolving ||
-                    isSavingSettlement
-                  }
-                  onClick={() => {
-                    if (settlement) {
-                      setShowConfirmModal(true)
-                    } else {
-                      handleSaveSettlement()
-                    }
-                  }}
-                >
-                  {isSavingSettlement ? "Saving..." : "Confirm & Save Settlement Account"}
-                </Button>
-              </div>
-            </div>
-          </Container>
-
-          {/* Confirm Dialog for Changing Account */}
-          {showConfirmModal && (
-            <div style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 999,
-            }}>
-              <div style={{ background: "white", padding: 24, borderRadius: 12, maxWidth: 440 }}>
-                <Heading level="h2">Change Settlement Destination?</Heading>
-                <Text style={{ marginTop: 12 }} className="text-ui-fg-subtle">
-                  Warning: Changing your bank account will redirect all future payouts to{" "}
-                  <strong>
-                    {resolvedAccountName || `the account ending in ${accountNumber.slice(-4)}`}
-                  </strong>
-                  . Are you sure you want to proceed?
-                </Text>
-                <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 24 }}>
-                  <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="danger" onClick={() => handleSaveSettlement()} disabled={isSavingSettlement}>
-                    Confirm & Update
+              <Container style={{ padding: 24 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+                  <div>
+                    <Heading level="h2" style={{ marginBottom: 8 }}>
+                      {settlement ? "Change Settlement Account" : "Add Settlement Bank Account"}
+                    </Heading>
+                    <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 20 }}>
+                      All customer payments will settle directly to this account via the platform gateway.
+                    </Text>
+                  </div>
+                  <Button variant="secondary" size="small" onClick={() => void fetchSettlementData()} disabled={isLoadingBanks}>
+                    <ArrowPath className={isLoadingBanks ? "animate-spin" : ""} />
+                    Refresh banks
                   </Button>
                 </div>
-              </div>
-            </div>
+
+                <div style={{ display: "grid", gap: 16, maxWidth: 480 }}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>Bank</label>
+                    <Input
+                      placeholder="Search banks..."
+                      value={bankSearch}
+                      onChange={(e) => setBankSearch(e.target.value)}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Select value={selectedBankCode} onValueChange={(val) => {
+                      setSelectedBankCode(val)
+                      setResolvedAccountName("")
+                      setBankSearch("")
+                    }}>
+                      <Select.Trigger>
+                        <Select.Value placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"} />
+                      </Select.Trigger>
+                      <Select.Content>
+                        {bankOptions.map((b) => (
+                          <Select.Item key={b.code} value={b.code}>{b.name}</Select.Item>
+                        ))}
+                      </Select.Content>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>10-Digit Account Number</label>
+                    <Input
+                      maxLength={10}
+                      placeholder="0123456789"
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
+                    />
+                  </div>
+
+                  {testMode === true && (
+                    <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-4 py-3">
+                      <Text size="small" className="text-ui-fg-subtle">
+                        Paystack test mode limits live account lookups. If the holder name does not appear automatically, Paystack confirms it when you save.
+                      </Text>
+                    </div>
+                  )}
+
+                  {isResolving && <Text size="small" className="text-ui-fg-subtle">Verifying account with bank...</Text>}
+
+                  {resolveError && (
+                    <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-4 py-3">
+                      <Text size="small" className="text-ui-fg-error">{resolveError}</Text>
+                    </div>
+                  )}
+
+                  {resolvedAccountName && (
+                    <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-4 py-3">
+                      <Text size="small" className="text-ui-fg-subtle">Account Holder Name</Text>
+                      <Text size="small" weight="plus" className="text-ui-fg-base">{resolvedAccountName}</Text>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 12 }}>
+                    <Button
+                      disabled={(!resolvedAccountName && testMode !== true) || isResolving || isSavingSettlement}
+                      onClick={() => {
+                        if (settlement) setShowConfirmModal(true)
+                        else void handleSaveSettlement()
+                      }}
+                    >
+                      {isSavingSettlement ? "Saving..." : "Confirm & Save Settlement Account"}
+                    </Button>
+                  </div>
+                </div>
+              </Container>
+
+              {showConfirmModal && (
+                <div className="fixed inset-0 z-[999] flex items-center justify-center bg-ui-bg-overlay/80">
+                  <div className="max-w-[440px] rounded-xl border border-ui-border-base bg-ui-bg-base p-6 shadow-elevation-flyout">
+                    <Heading level="h2">Change Settlement Destination?</Heading>
+                    <Text size="small" className="text-ui-fg-subtle mt-3">
+                      Warning: Changing your bank account will redirect all future payouts to{" "}
+                      <span className="font-medium text-ui-fg-base">
+                        {resolvedAccountName || `the account ending in ${accountNumber.slice(-4)}`}
+                      </span>. Are you sure you want to proceed?
+                    </Text>
+                    <div className="mt-6 flex justify-end gap-3">
+                      <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
+                      <Button variant="danger" onClick={() => void handleSaveSettlement()} disabled={isSavingSettlement}>Confirm & Update</Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </Tabs.Content>
       </Tabs>
 
-      {/* Transaction Details Drawer */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <Drawer.Content>
           <Drawer.Header>
@@ -700,9 +922,7 @@ const PaymentsPage = () => {
                 </div>
                 <div>
                   <Text size="small" className="text-ui-fg-subtle">Status</Text>
-                  <StatusBadge color={statusColor(selectedTx.status)}>
-                    {selectedTx.status}
-                  </StatusBadge>
+                  <StatusBadge color={statusColor(selectedTx.status)}>{selectedTx.status}</StatusBadge>
                 </div>
                 <div>
                   <Text size="small" className="text-ui-fg-subtle">Customer</Text>
@@ -718,9 +938,7 @@ const PaymentsPage = () => {
                 </div>
                 <div>
                   <Text size="small" className="text-ui-fg-subtle">Net Settlement Amount</Text>
-                  <Text style={{ fontWeight: 600 }}>
-                    {formatMoney(selectedTx.amount - (selectedTx.fees || 0), selectedTx.currency)}
-                  </Text>
+                  <Text style={{ fontWeight: 600 }}>{formatMoney(selectedTx.amount - (selectedTx.fees || 0), selectedTx.currency)}</Text>
                 </div>
                 <div>
                   <Text size="small" className="text-ui-fg-subtle">Channel</Text>

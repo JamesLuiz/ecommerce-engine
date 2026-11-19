@@ -16,7 +16,7 @@ export type RegionStorePolicies = {
 export const DEFAULT_REGION_STORE_POLICIES: RegionStorePolicies = {
   return_window_days: 30,
   free_returns: false,
-  shipping_rate: 10,
+  shipping_rate: 2500,
   handling_days_min: 0,
   handling_days_max: 1,
   transit_days_min: 2,

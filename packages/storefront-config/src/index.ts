@@ -13,12 +13,79 @@ export const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
 export const storefrontFontFamilySchema = z.enum(["sans", "serif", "mono"])
 export const storefrontCornerRadiusSchema = z.enum(["none", "sm", "md", "lg"])
 export const storefrontThemeModeSchema = z.enum(["light", "dark", "system"])
+/**
+ * Storefront layout designs selectable from Settings → Storefront.
+ *
+ * `minimal` is the original default look. The nine `aurora`…`pop` entries are
+ * the switchable high-end layouts: each one rearranges the same homepage
+ * sections (hero, showcase, featured, arrivals, collection rails) and renders
+ * its own product-card shape, palette, and motion.
+ *
+ * `editorial`, `bold`, and `classic` are legacy values kept so tenants that
+ * saved them still validate; the storefront resolves them to the closest
+ * modern layout (see `resolveLayoutId` in the storefront theme registry).
+ */
 export const storefrontThemePresetSchema = z.enum([
   "minimal",
   "editorial",
   "bold",
   "classic",
+  "aurora",
+  "luxe",
+  "street",
+  "brutal",
+  "breeze",
+  "ember",
+  "terra",
+  "chrome",
+  "pop",
 ])
+
+/** Layouts shown in the admin layout picker (legacy values hidden). */
+export const STOREFRONT_LAYOUT_IDS = [
+  "minimal",
+  "aurora",
+  "luxe",
+  "street",
+  "brutal",
+  "breeze",
+  "ember",
+  "terra",
+  "chrome",
+  "pop",
+] as const
+
+export type StorefrontLayoutId = (typeof STOREFRONT_LAYOUT_IDS)[number]
+
+/** Legacy preset values and the modern layout each one resolves to. */
+export const LEGACY_PRESET_FALLBACKS: Record<string, StorefrontLayoutId> = {
+  editorial: "luxe",
+  bold: "street",
+  classic: "terra",
+}
+
+/**
+ * Display metadata for the Settings → Storefront layout picker.
+ *
+ * Kept in the shared config package so the admin extension and the dashboard
+ * render identical names/taglines without duplicating the list.
+ */
+export const STOREFRONT_LAYOUT_META: Array<{
+  id: StorefrontLayoutId
+  name: string
+  tagline: string
+}> = [
+  { id: "minimal", name: "Minimal", tagline: "The clean default look" },
+  { id: "aurora", name: "Aurora", tagline: "Dreamy gradients & glow" },
+  { id: "luxe", name: "Luxe Noire", tagline: "Dark editorial luxury" },
+  { id: "street", name: "Streetline", tagline: "Bold urban energy" },
+  { id: "brutal", name: "Brutalist", tagline: "Raw poster-style edges" },
+  { id: "breeze", name: "Breeze", tagline: "Airy coastal calm" },
+  { id: "ember", name: "Ember", tagline: "Warm artisan craft" },
+  { id: "terra", name: "Terra", tagline: "Earthy organic market" },
+  { id: "chrome", name: "Chrome", tagline: "Futuristic glass tech" },
+  { id: "pop", name: "Pop Candy", tagline: "Playful color clash" },
+]
 export const storefrontHeaderStyleSchema = z.enum([
   "centered",
   "split",
@@ -112,10 +179,113 @@ const storefrontFooterContactSchema = z.object({
   hours: z.string().default(""),
 })
 
+/**
+ * Contact methods shown in the footer. `kind` is the selectable method
+ * (WhatsApp, Facebook, X/Twitter, Instagram, TikTok, Email, or a custom
+ * link); `label` is the display text and `url` the destination.
+ *
+ * `platform` is the legacy field (free-text social name). Old records that
+ * only have `platform` keep working: the resolver below maps known platform
+ * names onto kinds.
+ */
+export const storefrontContactKindSchema = z.enum([
+  "whatsapp",
+  "facebook",
+  "twitter",
+  "instagram",
+  "tiktok",
+  "email",
+  "custom",
+])
+
+export type StorefrontContactKind =
+  z.infer<typeof storefrontContactKindSchema>
+
 const storefrontFooterSocialSchema = z.object({
-  platform: storefrontSocialPlatformSchema,
+  kind: storefrontContactKindSchema.default("custom"),
+  label: z.string().default(""),
   url: z.string().default(""),
+  platform: z.string().default(""),
 })
+
+export type StorefrontContactLink = {
+  kind: StorefrontContactKind
+  label: string
+  href: string | undefined
+}
+
+const CONTACT_KIND_BY_PLATFORM: Record<string, StorefrontContactKind> = {
+  whatsapp: "whatsapp",
+  facebook: "facebook",
+  twitter: "twitter",
+  x: "twitter",
+  instagram: "instagram",
+  ig: "instagram",
+  tiktok: "tiktok",
+  email: "email",
+  mail: "email",
+}
+
+/**
+ * Resolves footer social records into renderable links. Handles legacy
+ * records (only `platform` + `url`), builds `wa.me` links from bare
+ * WhatsApp numbers and `mailto:` links for the email kind.
+ */
+export const resolveContactLinks = (
+  socials: Array<{
+    kind?: string | null
+    label?: string | null
+    url?: string | null
+    platform?: string | null
+  }> | null | undefined,
+): StorefrontContactLink[] => {
+  if (!Array.isArray(socials)) {
+    return []
+  }
+
+  return socials.flatMap((social) => {
+    const rawKind = (social.kind ?? "").toLowerCase()
+    const rawPlatform = (social.platform ?? "").toLowerCase()
+    const kind = (
+      rawKind === "custom" || rawKind === "" ? null : rawKind
+    ) as StorefrontContactKind | null
+    const resolvedKind =
+      kind ?? CONTACT_KIND_BY_PLATFORM[rawPlatform] ?? "custom"
+    const url = (social.url ?? "").trim()
+    const platformLabel = (social.platform ?? "").trim()
+    const label =
+      (social.label ?? "").trim() ||
+      platformLabel ||
+      resolvedKind.charAt(0).toUpperCase() + resolvedKind.slice(1)
+
+    let href: string | undefined = url || undefined
+
+    if (resolvedKind === "whatsapp" && url) {
+      const digits = url.replace(/\D/g, "")
+      if (digits) {
+        href = `https://wa.me/${digits}`
+      } else if (!/^https?:\/\//i.test(url)) {
+        href = `https://${url}`
+      }
+    } else if (resolvedKind === "email" && url) {
+      href = url.startsWith("mailto:") ? url : `mailto:${url}`
+    } else if (
+      url &&
+      !/^https?:\/\//i.test(url) &&
+      !url.startsWith("/") &&
+      !url.startsWith("mailto:") &&
+      !url.startsWith("tel:")
+    ) {
+      href = `https://${url}`
+    }
+
+    if (!href) {
+      return []
+    }
+
+    return [{ kind: resolvedKind, label, href }]
+  })
+}
 
 const storefrontFooterLegalSchema = z.object({
   label: z.string().min(1).max(120),

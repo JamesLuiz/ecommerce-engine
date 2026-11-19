@@ -13,11 +13,14 @@ import {
   Textarea,
   toast,
 } from "@medusajs/ui"
-import type { StorefrontSettings } from "@flowcheq/storefront-config"
+import {
+  STOREFRONT_LAYOUT_META,
+  type StorefrontSettings,
+} from "@flowcheq/storefront-config"
 import { useEffect, useState } from "react"
 
 type ThemeMode = "light" | "dark" | "system"
-type ThemePreset = "minimal" | "editorial" | "bold" | "classic"
+type ThemePreset = StorefrontSettings["theme"]["preset"]
 type HeaderStyle = "centered" | "split" | "minimal"
 type FooterStyle = "compact" | "extended"
 type FontFamily = "sans" | "serif" | "mono"
@@ -25,9 +28,21 @@ type CornerRadius = "none" | "sm" | "md" | "lg"
 
 type NavLinkDraft = { label: string; href: string }
 
-type SocialPlatform = StorefrontSettings["footer"]["socials"][number]["platform"]
+type SocialDraft = {
+  kind: StorefrontSettings["footer"]["socials"][number]["kind"]
+  label: string
+  url: string
+}
 
-type SocialDraft = { platform: SocialPlatform; url: string }
+const CONTACT_KINDS = [
+  { value: "whatsapp", label: "WhatsApp", hint: "Phone number, e.g. 2348000000000" },
+  { value: "facebook", label: "Facebook", hint: "Page URL, e.g. https://facebook.com/shop" },
+  { value: "twitter", label: "X (Twitter)", hint: "Profile URL, e.g. https://x.com/shop" },
+  { value: "instagram", label: "Instagram", hint: "Profile URL, e.g. https://instagram.com/shop" },
+  { value: "tiktok", label: "TikTok", hint: "Profile URL, e.g. https://tiktok.com/@shop" },
+  { value: "email", label: "Email", hint: "Email address, e.g. hello@shop.com" },
+  { value: "custom", label: "Custom link", hint: "Any URL or path, e.g. https://blog.shop.com" },
+] as const
 
 type LegalDraft = { label: string; href: string }
 
@@ -289,21 +304,26 @@ const ThemeLayoutSection = ({
     </div>
 
     <div style={{ display: "grid", gap: 8 }}>
-      <Label htmlFor="storefront-theme-preset">Theme preset</Label>
+      <Label htmlFor="storefront-theme-preset">Storefront layout</Label>
       <Select
         value={settings.theme.preset}
         onValueChange={(value) => updateTheme({ preset: value as ThemePreset })}
       >
         <Select.Trigger>
-          <Select.Value placeholder="Theme preset" />
+          <Select.Value placeholder="Storefront layout" />
         </Select.Trigger>
         <Select.Content>
-          <Select.Item value="minimal">Minimal</Select.Item>
-          <Select.Item value="editorial">Editorial</Select.Item>
-          <Select.Item value="bold">Bold</Select.Item>
-          <Select.Item value="classic">Classic</Select.Item>
+          {STOREFRONT_LAYOUT_META.map((layout) => (
+            <Select.Item key={layout.id} value={layout.id}>
+              {layout.name} — {layout.tagline}
+            </Select.Item>
+          ))}
         </Select.Content>
       </Select>
+      <Text size="small" className="text-ui-fg-subtle">
+        Switching layouts restyles the whole storefront — same words, sections
+        and products, arranged into a brand-new design with its own animations.
+      </Text>
     </div>
 
     <div style={{ display: "grid", gap: 8 }}>
@@ -701,10 +721,6 @@ const FooterContactSection = ({
   updateFooter: (patch: Partial<StorefrontSettings["footer"]>) => void
 }) => {
   const footer = settings.footer
-  const contact = footer.contact
-
-  const updateContact = (patch: Partial<StorefrontSettings["footer"]["contact"]>) =>
-    updateFooter({ contact: { ...contact, ...patch } })
 
   const updateSocial = (index: number, patch: Partial<SocialDraft>) => {
     const socials = footer.socials.map((social, currentIndex) =>
@@ -718,7 +734,9 @@ const FooterContactSection = ({
   }
 
   const addSocial = () => {
-    updateFooter({ socials: [...footer.socials, { platform: "instagram", url: "" }] })
+    updateFooter({
+      socials: [...footer.socials, { kind: "instagram", label: "", url: "" }],
+    })
   }
 
   const updateLegal = (index: number, patch: Partial<LegalDraft>) => {
@@ -739,46 +757,70 @@ const FooterContactSection = ({
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "grid", gap: 8 }}>
-        <Text size="small">Contact details</Text>
-        <Input
-          value={contact.email}
-          onChange={(event) => updateContact({ email: event.target.value })}
-        />
-        <Input
-          value={contact.phone}
-          onChange={(event) => updateContact({ phone: event.target.value })}
-        />
-        <Input
-          value={contact.address}
-          onChange={(event) => updateContact({ address: event.target.value })}
-        />
-        <Input
-          value={contact.hours}
-          onChange={(event) => updateContact({ hours: event.target.value })}
-        />
-      </div>
-
-      <div style={{ display: "grid", gap: 8 }}>
-        <Text size="small">Socials</Text>
-        {footer.socials.map((social, index) => (
-          <div key={`${social.platform}-${social.url}-${index}`} style={{ display: "grid", gap: 8 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
-              <Input
-                value={social.platform}
-                onChange={(event) => updateSocial(index, { platform: event.target.value })}
-              />
+        <Text size="small">Contact methods</Text>
+        <Text size="small" className="text-ui-fg-subtle">
+          Pick a method (WhatsApp, Facebook, X, Instagram, TikTok, Email, or a
+          custom link) and add its destination. These render as contact links in
+          the storefront footer.
+        </Text>
+        {footer.socials.map((social, index) => {
+          const kindMeta =
+            CONTACT_KINDS.find((kind) => kind.value === social.kind) ??
+            CONTACT_KINDS[CONTACT_KINDS.length - 1]
+          return (
+            <div
+              key={`${social.kind}-${social.url}-${index}`}
+              style={{ display: "grid", gap: 8 }}
+            >
+              <div
+                style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
+              >
+                <Select
+                  value={social.kind}
+                  onValueChange={(value) =>
+                    updateSocial(index, {
+                      kind: value as SocialDraft["kind"],
+                    })
+                  }
+                >
+                  <Select.Trigger>
+                    <Select.Value placeholder="Method" />
+                  </Select.Trigger>
+                  <Select.Content>
+                    {CONTACT_KINDS.map((kind) => (
+                      <Select.Item key={kind.value} value={kind.value}>
+                        {kind.label}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select>
+                <Input
+                  value={social.label}
+                  placeholder="Label (optional)"
+                  onChange={(event) =>
+                    updateSocial(index, { label: event.target.value })
+                  }
+                />
+              </div>
               <Input
                 value={social.url}
-                onChange={(event) => updateSocial(index, { url: event.target.value })}
+                placeholder={kindMeta.hint}
+                onChange={(event) =>
+                  updateSocial(index, { url: event.target.value })
+                }
               />
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => removeSocial(index)}
+              >
+                Remove
+              </Button>
             </div>
-            <Button type="button" variant="danger" onClick={() => removeSocial(index)}>
-              Remove
-            </Button>
-          </div>
-        ))}
+          )
+        })}
         <Button type="button" variant="secondary" onClick={() => addSocial()}>
-          Add social
+          Add contact method
         </Button>
       </div>
 
@@ -1275,6 +1317,9 @@ const StorefrontSettingsPage = () => {
         <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 8 }}>
           Shape the storefront your customers will see: brand, theme, layout, home
           content, navigation, features, footer and SEO.
+        </Text>
+        <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 8 }}>
+          Need help? Open <a href="/app/settings/storefront-guide" className="text-ui-fg-interactive hover:underline">Storefront guide</a> for a tour of every modifiable section and how to change it.
         </Text>
       </div>
 

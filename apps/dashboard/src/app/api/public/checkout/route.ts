@@ -35,20 +35,30 @@ function randomReference() {
 }
 
 async function ensurePlan(planId: string, currency: string) {
-  const existing = await db.select().from(plans).where(eq(plans.id, planId)).limit(1)
-  if (existing[0]) {
-    return existing[0]
-  }
-
-  // Default engine setup plan (NGN 150,000 = 15,000,000 kobo)
+  // Current price: NGN 154,900/yr = 15,490,000 kobo. Existing installs may
+  // already have a `starter` row at the old price, so sync it on the way
+  // through instead of only seeding fresh databases.
   const defaults: Record<string, { name: string; price_minor: number; currency: string; interval: string }> = {
-    starter: { name: "Starter setup", price_minor: 15000000, currency: "NGN", interval: "one_time" },
+    starter: { name: "Starter setup", price_minor: 15490000, currency: "NGN", interval: "yearly" },
   }
   const plan = defaults[planId] ?? {
     name: planId,
-    price_minor: 15000000,
+    price_minor: 15490000,
     currency,
-    interval: "one_time",
+    interval: "yearly",
+  }
+
+  const existing = await db.select().from(plans).where(eq(plans.id, planId)).limit(1)
+  if (existing[0]) {
+    if (existing[0].price_minor !== plan.price_minor || existing[0].interval !== plan.interval) {
+      const [synced] = await db
+        .update(plans)
+        .set({ price_minor: plan.price_minor, currency: plan.currency, interval: plan.interval })
+        .where(eq(plans.id, planId))
+        .returning()
+      return synced ?? existing[0]
+    }
+    return existing[0]
   }
 
   const [created] = await db
@@ -129,7 +139,7 @@ export async function POST(request: Request) {
     }
 
     const plan = await ensurePlan(signupPayload.data.plan, currency)
-    const amountMinor = plan?.price_minor ?? 15000000
+    const amountMinor = plan?.price_minor ?? 15490000
     const orderCurrency = plan?.currency ?? currency
     const providerReference = randomReference()
 
@@ -153,7 +163,13 @@ export async function POST(request: Request) {
       meta: { orderId: order.id, email, planId: signupPayload.data.plan },
     })
 
-    const origin = new URL(request.url).origin
+    const configuredOrigin = process.env.DASHBOARD_PUBLIC_URL?.trim().replace(/\/+$/, "")
+    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim()
+    const host = forwardedHost || request.headers.get("host")?.trim()
+    const proto =
+      request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
+      new URL(request.url).protocol.replace(/:$/, "")
+    const origin = configuredOrigin || (host ? `${proto}://${host}` : new URL(request.url).origin)
     const callbackUrl = `${origin}/checkout/complete?reference=${encodeURIComponent(providerReference)}`
 
     const initRes = await fetch("https://api.paystack.co/transaction/initialize", {

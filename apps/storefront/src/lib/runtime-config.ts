@@ -26,7 +26,7 @@ export type RuntimeConfig = {
 const DEFAULT_BACKEND_URL = "http://localhost:9000"
 const DEFAULT_STORE_NAME = "Store"
 const DEFAULT_PRIMARY_COLOR = "#111111"
-const DEFAULT_COUNTRY_CODE = "us"
+const DEFAULT_COUNTRY_CODE = "ng"
 
 /**
  * Lenient accessor. Returns safe fallbacks so module evaluation during

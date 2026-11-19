@@ -59,8 +59,9 @@ export default async function OrdersPage() {
       <div>
         <h1 className="text-2xl font-semibold">Orders</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Plan payments for customer stores. Marking an order paid creates the tenant from its signup
-          payload and queues provisioning.
+          Plan payments and storefront setup orders for customer stores. Use Mark paid to record
+          payment, Deploy to queue provisioning for a paid order, and Order fulfilled once setup is
+          complete.
         </p>
       </div>
 

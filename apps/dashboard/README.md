@@ -227,8 +227,8 @@ The plan fee is collected with Paystack from the landing page:
    (`POST /v1/transactions/initialize`) and keep the returned gateway reference
    and authorization URL.
 2. Create the control-plane order with the plan amount in minor units (for the
-   `starter` plan priced at 150000 in the `NGN` currency, `amount_minor` is
-   15000000), the provider (`paystack`), the gateway reference as
+   `starter` plan priced at 154900 in the `NGN` currency, `amount_minor` is
+   15490000), the provider (`paystack`), the gateway reference as
    `provider_reference`, status `pending` and the tenant configuration as
    `signup_payload`. Today this is done from **Orders > Create order** or
    `POST /api/admin/orders`.
@@ -279,7 +279,7 @@ Staff endpoints, authenticated by the staff session cookie:
   "plan_id": "starter",
   "provider": "paystack",
   "provider_reference": "gateway-transaction-reference",
-  "amount_minor": 15000000,
+  "amount_minor": 15490000,
   "currency": "NGN",
   "status": "pending",
   "signup_payload": {
