@@ -36,6 +36,40 @@ export default async function initial_data_seed({
     ModuleRegistrationName.FULFILLMENT
   );
 
+  // Idempotency: skip if the store has already been seeded (e.g. ng region
+  // exists or a default store/currency setup is present). This avoids failing
+  // on retries or existing databases where countries are already assigned.
+  try {
+    const { data: existingRegions } = await query.graph({
+      entity: "region",
+      fields: ["id", "countries.iso_2"],
+    });
+    const hasNgRegion = (existingRegions || []).some((region: any) =>
+      (region.countries || []).some(
+        (c: any) => (c.iso_2 || "").toLowerCase() === "ng"
+      )
+    );
+    const storeModuleService = container.resolve(Modules.STORE);
+    const [existingStore] = await storeModuleService.listStores({}, { take: 1 });
+    const hasSeededStore =
+      existingStore &&
+      Array.isArray((existingStore as any).supported_currencies) &&
+      (existingStore as any).supported_currencies.length > 0;
+
+    if (hasNgRegion || hasSeededStore) {
+      logger.info(
+        "Initial data already seeded (NG region/store present). Skipping."
+      );
+      return;
+    }
+  } catch (e) {
+    // If idempotency check fails (e.g. modules not ready), attempt to proceed
+    // but guard region creation below.
+    logger.warn(
+      `Initial seed idempotency check failed, proceeding: ${(e as Error)?.message ?? e}`
+    );
+  }
+
   const countries = ["ng"];
 
   logger.info("Seeding store data...");
@@ -93,21 +127,56 @@ export default async function initial_data_seed({
   });
 
   logger.info("Seeding region data...");
-  const { result: regionResult } = await createRegionsWorkflow(container).run({
-    input: {
-      regions: [
-        {
-          name: "Nigeria",
-          currency_code: "ngn",
-          countries,
-          payment_providers: ["pp_system_default"],
-          metadata: DEFAULT_REGION_STORE_POLICIES,
-        },
-      ],
-    },
+  let region: any;
+  const { data: regionsBeforeCreate } = await query.graph({
+    entity: "region",
+    fields: ["id", "name", "countries.iso_2"],
   });
-  const region = regionResult[0];
-  logger.info("Finished seeding regions.");
+  region = (regionsBeforeCreate || []).find((r: any) =>
+    (r.countries || []).some((c: any) => (c.iso_2 || "").toLowerCase() === "ng")
+  );
+
+  if (!region) {
+    try {
+      const { result: regionResult } = await createRegionsWorkflow(container).run({
+        input: {
+          regions: [
+            {
+              name: "Nigeria",
+              currency_code: "ngn",
+              countries,
+              payment_providers: ["pp_system_default"],
+              metadata: DEFAULT_REGION_STORE_POLICIES,
+            },
+          ],
+        },
+      });
+      region = regionResult[0];
+      logger.info("Finished seeding regions.");
+    } catch (e) {
+      const message = (e as Error)?.message || String(e);
+      if (message.toLowerCase().includes("already assigned to a region")) {
+        const { data: regionsAfter } = await query.graph({
+          entity: "region",
+          fields: ["id", "name", "countries.iso_2"],
+        });
+        region = (regionsAfter || []).find((r: any) =>
+          (r.countries || []).some(
+            (c: any) => (c.iso_2 || "").toLowerCase() === "ng"
+          )
+        );
+        if (region) {
+          logger.info("Nigeria region already exists, continuing seed.");
+        } else {
+          throw e;
+        }
+      } else {
+        throw e;
+      }
+    }
+  } else {
+    logger.info(`Nigeria region already exists (${region.id}), skipping creation.`);
+  }
 
   logger.info("Seeding tax regions...");
   await createTaxRegionsWorkflow(container).run({
