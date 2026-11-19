@@ -15,7 +15,7 @@ COPY apps/storefront/package.json apps/storefront/package.json
 COPY apps/dashboard/package.json apps/dashboard/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY packages/tenant-config/package.json packages/tenant-config/package.json
-COPY packages/storefront-config/package.json packages/storefront-config/package.json
+COPY packages/storefront-config packages/storefront-config
 COPY packages/payments-gateway/package.json packages/payments-gateway/package.json
 COPY packages/db/package.json packages/db/package.json
 COPY packages/provisioner/package.json packages/provisioner/package.json
