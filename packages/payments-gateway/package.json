@@ -5,10 +5,10 @@
   "type": "module",
   "description": "Central Flowcheq payments gateway that routes per-vendor Medusa payment traffic to Paystack",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "dev:worker": "tsx watch src/worker.ts",
+    "dev": "node --env-file=.env --import tsx src/index.ts",
+    "dev:worker": "node --env-file=.env --import tsx src/worker.ts",
     "migrate": "node dist/migrate.js",
-    "migrate:dev": "tsx src/migrate.ts",
+    "migrate:dev": "node --env-file=.env --import tsx src/migrate.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "start:worker": "node dist/worker.js",

@@ -120,12 +120,21 @@ export class GatewayClient {
       return json as T
     } catch (err: unknown) {
       if (err instanceof MedusaError) throw err
+      const method = init?.method ?? "GET"
+      const target = `${this.gatewayUrl}${path}`
+
       if ((err as Error)?.name === "AbortError") {
-        throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, "Gateway request timed out after 10s")
+        throw new MedusaError(
+          MedusaError.Types.UNEXPECTED_STATE,
+          `Gateway request timed out after 10s: ${method} ${target}`,
+        )
       }
+
+      const cause = (err as { cause?: { message?: string } })?.cause?.message
+      const detail = cause ? `${(err as Error).message} (${cause})` : (err as Error)?.message
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
-        err instanceof Error ? err.message : "Gateway request failed",
+        `Gateway request failed: ${method} ${target} - ${detail ?? "unknown error"}`,
       )
     } finally {
       clearTimeout(timeout)
