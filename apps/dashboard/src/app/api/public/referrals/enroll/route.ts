@@ -31,7 +31,20 @@ export async function POST(request: Request) {
       meUrl: result.meUrl,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return NextResponse.json({ error: `Could not enrol: ${message}` }, { status: 500 })
+    const err = error instanceof Error ? error : new Error(String(error))
+    const cause = (err as Error & { cause?: unknown }).cause
+    const detail = cause instanceof Error ? cause.message : cause ? String(cause) : err.message
+
+    console.error("[referral.enroll] failed", { error: err.message, cause: detail })
+
+    return NextResponse.json(
+      {
+        error:
+          process.env.NODE_ENV === "production"
+            ? "Could not enrol. Please try again."
+            : `Could not enrol: ${detail}`,
+      },
+      { status: 500 }
+    )
   }
 }

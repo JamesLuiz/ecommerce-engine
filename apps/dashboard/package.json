@@ -4,9 +4,9 @@
   "private": true,
   "description": "Flowcheq Commerce control-plane dashboard (staff area).",
   "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "next build",
-    "start": "next start -p 9000",
+    "dev": "node --env-file-if-exists=../../.env --env-file-if-exists=.env ./scripts/next.mjs dev -p 3000",
+    "build": "node --env-file-if-exists=../../.env --env-file-if-exists=.env ./scripts/next.mjs build",
+    "start": "node --env-file-if-exists=../../.env --env-file-if-exists=.env ./scripts/next.mjs start -p 9000",
     "staff:create": "node --env-file-if-exists=../../.env --env-file-if-exists=.env scripts/create-staff.mjs",
     "lint": "eslint .",
     "test": "vitest run"

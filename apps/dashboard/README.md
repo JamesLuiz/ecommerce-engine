@@ -314,17 +314,24 @@ Both return `{"ok":true,"orderId","tenantId","jobId"}` and are idempotent.
 ## Run
 
 ```bash
-npm run dev   --workspace=@dtc/dashboard     # http://localhost:9000
+npm run dev   --workspace=@dtc/dashboard     # http://localhost:3000
 npm run build --workspace=@dtc/dashboard
-npm run start --workspace=@dtc/dashboard
+npm run start --workspace=@dtc/dashboard     # http://localhost:9000
 npm run lint  --workspace=@dtc/dashboard
 ```
+
+The `dev`, `build` and `start` scripts load the repository root `.env` first,
+then an optional `apps/dashboard/.env` override. Next.js itself only loads env
+files from the app directory, so the root file must be passed in explicitly or
+the database client silently falls back to local PostgreSQL defaults.
 
 The app reads the env vars documented in the repository `.env.example`.
 Required at runtime: `CONTROL_PLANE_DATABASE_URL`, `REDIS_URL`,
 `SECRETS_ENCRYPTION_KEY` (for tenant secrets), `RELEASE_WEBHOOK_SECRET` and
-`ORDER_WEBHOOK_SECRET` (internal endpoints). The provisioning settings in the
-same file are required to queue and run deployments.
+`ORDER_WEBHOOK_SECRET` (internal endpoints). Set `DASHBOARD_PUBLIC_URL` to the
+public dashboard origin so referral and `/me` links are correct behind a proxy.
+The provisioning settings in the same file are required to queue and run
+deployments.
 
 ## Create a staff account
 
