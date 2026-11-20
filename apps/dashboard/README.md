@@ -345,3 +345,53 @@ The script hashes the password with argon2id and never logs it.
 admin page and API route then verifies the session in the database and rejects
 accounts whose role is not `staff`, so a customer session cannot reach the staff
 area.
+
+## Referral program
+
+The dashboard also hosts the public referral program and its staff payout console.
+
+### Enrolment and links
+
+- `/referral` collects name, email, bank name and account number. The account
+  number is encrypted with `SECRETS_ENCRYPTION_KEY` before it is stored.
+- Enrolment is idempotent per email: submitting the same email again returns the
+  original links instead of creating a second enrollee.
+- Each enrollee gets a public `code` and a private `access_token`. The generated
+  referral link is `DASHBOARD_PUBLIC_URL/?ref=CODE`; it always opens the normal
+  sales page at `/`.
+- `/me?access=TOKEN` is the private metrics page. The token is a bearer link, so
+  enrollees should bookmark it and not share it.
+
+### Attribution and crediting
+
+- When `/?ref=CODE` is opened, middleware stores the code in an httpOnly cookie
+  for 30 days. The sales form also sends the current `ref` value explicitly, so
+  the code survives a page reload.
+- Checkout resolves the code to an active enrollee and stores it on the order.
+  Unknown codes are ignored; an enrollee cannot earn from their own email.
+- Every paid path (Paystack webhook, checkout callback and staff "mark paid")
+  calls the same credit function. It inserts at most one NGN 18,000
+  (1,800,000 kobo) earning per order, so duplicate webhooks cannot double-pay.
+- `/me` shows earnings for today, this week (UTC Monday start), this month and
+  this year, plus total referrals, lifetime earnings, joined date, settlement
+  status and the referred customers' payment references.
+
+### Staff settlement
+
+- `/admin/settlement` shows the number of enrolled referrers, unpaid bonuses,
+  paid bonuses and settled referrals.
+- It has two tabs. **Unsettled** lists enrollees with pending bonuses; **Settled**
+  lists those with a payout history.
+- Expanding a row reveals bank details, all referral bonuses and each referred
+  customer's payment reference. Staff transfer the money manually, optionally
+  record a transfer reference and note, then click **Mark as settled**. That
+  attaches every pending earning to one settlement record and writes a
+  `referral.settled` audit entry.
+- Settlement is idempotent: an enrollee with no pending earnings is rejected.
+
+Run the migration before using the feature:
+
+```bash
+npm run migrate --workspace=@flowcheq/db
+npm run test --workspace=@dtc/dashboard
+```

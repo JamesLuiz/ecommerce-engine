@@ -6,7 +6,8 @@ Flowcheq control plane.
 ## Contents
 
 - `src/schema.ts` - customers, sessions, plans, orders, tenants, tenant_secrets,
-  provision_steps, releases and audit_log.
+  provision_steps, releases, audit_log and the referral programme tables
+  (`referral_enrollments`, `referral_earnings`, `referral_settlements`).
 - `src/encryption.ts` - AES-256-GCM `encrypt`/`decrypt` for tenant secrets,
   keyed by `SECRETS_ENCRYPTION_KEY` (64 hex characters).
 - `src/index.ts` - the shared `db` client (`CONTROL_PLANE_DATABASE_URL`).
