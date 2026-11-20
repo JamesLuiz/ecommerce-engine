@@ -32,10 +32,17 @@ export default function PurchaseForm() {
     setError(null)
 
     try {
+      const referralCode = new URLSearchParams(window.location.search).get("ref")
       const response = await fetch("/api/public/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, businessName, slug }),
+        body: JSON.stringify({
+          name,
+          email,
+          businessName,
+          slug,
+          ...(referralCode ? { referralCode } : {}),
+        }),
       })
       const data = (await response.json().catch(() => ({}))) as {
         error?: string

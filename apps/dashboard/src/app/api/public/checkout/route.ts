@@ -9,6 +9,7 @@ import { customers, orders, plans } from "@flowcheq/db"
 import { TenantConfig } from "@flowcheq/tenant-config"
 import { recordAudit } from "@lib/audit"
 import { db } from "@lib/db"
+import { getStoredReferralCode, resolveReferralForCheckout } from "@lib/referral"
 
 export const dynamic = "force-dynamic"
 
@@ -20,6 +21,7 @@ const CheckoutBody = z.object({
   planId: z.string().min(1).max(64).optional(),
   currency: z.string().length(3).optional(),
   region: z.enum(["ng", "us", "eu"]).optional(),
+  referralCode: z.string().trim().max(16).optional(),
 })
 
 function slugify(value: string) {
@@ -97,6 +99,11 @@ export async function POST(request: Request) {
   const currency = (parsed.data.currency ?? "NGN").toUpperCase()
   const region = parsed.data.region ?? "ng"
 
+  // Body value wins when the sales page was opened with ?ref=CODE; the
+  // httpOnly cookie covers a later checkout from the same browser.
+  const referralCode = parsed.data.referralCode?.trim() || (await getStoredReferralCode())
+  const referralEnrollment = await resolveReferralForCheckout(referralCode)
+
   const signupPayload = TenantConfig.safeParse({
     slug,
     businessName,
@@ -154,13 +161,19 @@ export async function POST(request: Request) {
         currency: orderCurrency,
         status: "pending",
         signup_payload: signupPayload.data,
+        referral_enrollment_id: referralEnrollment?.id ?? null,
       })
       .returning({ id: orders.id })
 
     await recordAudit({
       actor: "public-checkout",
       action: "order.created",
-      meta: { orderId: order.id, email, planId: signupPayload.data.plan },
+      meta: {
+        orderId: order.id,
+        email,
+        planId: signupPayload.data.plan,
+        referralApplied: Boolean(referralEnrollment),
+      },
     })
 
     const configuredOrigin = process.env.DASHBOARD_PUBLIC_URL?.trim().replace(/\/+$/, "")
@@ -213,6 +226,7 @@ export async function POST(request: Request) {
       ok: true,
       orderId: order.id,
       reference: providerReference,
+      referralApplied: Boolean(referralEnrollment),
       authorization_url: initData.data.authorization_url,
     })
   } catch (error) {

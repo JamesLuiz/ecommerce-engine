@@ -6,6 +6,7 @@ import { orders, tenants } from "@flowcheq/db"
 import { db } from "@lib/db"
 import { recordAudit } from "@lib/audit"
 import { enqueueProvision } from "@lib/queue"
+import { creditReferralForOrder } from "@lib/referral"
 
 export interface MarkOrderPaidResult {
   ok: true
@@ -13,6 +14,7 @@ export interface MarkOrderPaidResult {
   tenantId: string | null
   jobId?: string
   alreadyPaid?: boolean
+  referralCredited?: boolean
 }
 
 export interface MarkOrderFulfilledResult {
@@ -115,6 +117,24 @@ export async function markOrderPaid(
     }
   }
 
+  // Credit the referrer on every paid path (webhook, callback or staff action).
+  // The earning row is unique per order, so repeated calls cannot double-pay.
+  let referralCredited = false
+  try {
+    const credit = await creditReferralForOrder(
+      { ...order, status: "paid" },
+      { actor: options.actor ?? "payment-webhook" }
+    )
+    referralCredited = credit.credited
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    await recordAudit({
+      actor: options.actor ?? "payment-webhook",
+      action: "referral.credit_failed",
+      meta: { orderId: order.id, error: message },
+    })
+  }
+
   if (alreadyPaid && !provision) {
     const signupPayload = (order.signup_payload ?? {}) as { slug?: unknown }
     const slug = typeof signupPayload.slug === "string" ? signupPayload.slug : null
@@ -128,7 +148,7 @@ export async function markOrderPaid(
       tenantId = tenantRows[0]?.id ?? null
     }
 
-    return { ok: true, orderId: order.id, tenantId, alreadyPaid: true }
+    return { ok: true, orderId: order.id, tenantId, alreadyPaid: true, referralCredited }
   }
 
   const tenantId = await resolveOrderTenant(order)
@@ -143,10 +163,17 @@ export async function markOrderPaid(
     actor: options.actor ?? "payment-webhook",
     action: alreadyPaid ? "order.deploy" : "order.paid",
     tenantId,
-    meta: { orderId: order.id, jobId, provision },
+    meta: { orderId: order.id, jobId, provision, referralCredited },
   })
 
-  return { ok: true, orderId: order.id, tenantId, jobId, ...(alreadyPaid ? { alreadyPaid: true } : {}) }
+  return {
+    ok: true,
+    orderId: order.id,
+    tenantId,
+    jobId,
+    referralCredited,
+    ...(alreadyPaid ? { alreadyPaid: true } : {}),
+  }
 }
 
 /**
