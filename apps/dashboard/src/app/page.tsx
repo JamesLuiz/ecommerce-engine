@@ -1,4 +1,7 @@
+import Link from "next/link"
+
 import PurchaseForm from "./purchase-form"
+import { formatNaira, REFERRAL_BONUS_MINOR } from "@lib/referral-rules"
 
 export const dynamic = "force-dynamic"
 
@@ -176,6 +179,20 @@ export default function HomePage() {
                 See what&apos;s included
               </a>
             </div>
+
+            <p
+              className="motion-safe:animate-fade-in-top mt-4 text-sm text-neutral-600"
+              style={{ animationDelay: "210ms" }}
+            >
+              Know someone who needs a store?{" "}
+              <Link
+                href="/referral"
+                className="font-medium text-[var(--brand-primary)] underline underline-offset-4"
+              >
+                Earn {formatNaira(REFERRAL_BONUS_MINOR)} per referral
+              </Link>
+              .
+            </p>
           </div>
 
           <div className="motion-safe:animate-fade-in-right relative" style={{ animationDelay: "140ms" }}>
