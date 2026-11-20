@@ -21,6 +21,7 @@ const inputClass =
 const labelClass = "flex flex-col gap-2 text-xs font-medium uppercase tracking-[0.12em] text-neutral-600"
 
 export function ReferralEnrollmentForm() {
+  const [formOpen, setFormOpen] = useState(false)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [bankName, setBankName] = useState("")
@@ -105,11 +106,53 @@ export function ReferralEnrollmentForm() {
     )
   }
 
+  if (!formOpen) {
+    return (
+      <div className="rounded-[28px] border border-black/5 bg-white p-7 shadow-[0_30px_80px_rgba(17,17,17,0.06)] md:p-9">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
+          Get started
+        </p>
+        <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">Generate your referral program</h2>
+        <p className="mt-4 max-w-xl text-base leading-7 text-neutral-600">
+          Create your unique referral link and start earning {formatNaira(REFERRAL_BONUS_MINOR)} for every
+          successful store purchase made through it.
+        </p>
+        <button
+          type="button"
+          onClick={() => setFormOpen(true)}
+          className="mt-8 inline-flex items-center justify-center rounded-full bg-[var(--brand-primary)] px-7 py-4 text-sm font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
+        >
+          Generate referral program
+        </button>
+        <p className="mt-4 text-xs leading-5 text-neutral-500">
+          You will provide your name, email, bank name and account number so we can credit and pay your bonuses.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <form
       onSubmit={onSubmit}
       className="rounded-[28px] border border-black/5 bg-white p-7 shadow-[0_30px_80px_rgba(17,17,17,0.06)] md:p-9"
     >
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">Enrollment</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">Create your referral account</h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setFormOpen(false)
+            setError(null)
+          }}
+          className="text-sm font-medium text-neutral-500 hover:text-neutral-900"
+        >
+          Back
+        </button>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClass}>
           Full name
@@ -189,7 +232,7 @@ export function ReferralEnrollmentForm() {
             disabled={pending}
             className="inline-flex w-full items-center justify-center rounded-full bg-[var(--brand-primary)] px-7 py-4 text-sm font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0 sm:w-auto"
           >
-            {pending ? "Creating your link..." : "Generate referral program"}
+            {pending ? "Creating your link..." : "Create referral link"}
           </button>
           <p className="mt-4 text-xs leading-5 text-neutral-500">
             Your account number is encrypted at rest and is only shown to staff processing payouts.
