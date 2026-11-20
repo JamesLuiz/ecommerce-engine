@@ -66,14 +66,17 @@ create a fresh invite from **Users** in the admin instead.
 ## 4. Tutorial: customize the storefront from the backend
 
 Give this section to the customer. Everything happens in the tenant admin —
-no code, no redeploy.
+no code, no redeploy. For the full product, price, shipping, tax and region
+walkthrough, use [docs/store-setup-guide.md](./store-setup-guide.md).
 
 1. Open your admin: `https://<your-store>-admin.example.store/app` and log in.
 2. Go to **Settings > Storefront**. There are seven tabs:
    - **Branding** — store name, logo, favicon. Upload images under
      **Settings > Media** first, then pick them here.
-   - **Theme** — light/dark/system, preset (`minimal`, `editorial`, `bold`,
-     `classic`), fonts, colours, corner radius.
+   - **Theme** — light/dark/system, preset (`minimal`, `aurora`, `luxe`,
+     `street`, `brutal`, `breeze`, `ember`, `terra`, `chrome`, `pop`), fonts,
+     colours, corner radius. Older `editorial`, `bold` and `classic` values are
+     accepted and render as `luxe`, `street` and `terra` respectively.
    - **Home** — hero headline, subtext, hero image, featured categories.
    - **Navigation** — announcement bar, menu layout (`centered`, `split`,
      `minimal`), mega-menu, search and account toggles.

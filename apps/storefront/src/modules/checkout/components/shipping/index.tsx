@@ -214,7 +214,7 @@ const Shipping: React.FC<ShippingProps> = ({
                       value={PICKUP_OPTION_ON}
                       data-testid="delivery-option-radio"
                       className={clx(
-                        "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
+                        "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-4 mb-2 hover:shadow-borders-interactive-with-active small:px-6",
                         {
                           "border-ui-border-interactive":
                             showPickupOptions === PICKUP_OPTION_ON,
@@ -256,7 +256,7 @@ const Shipping: React.FC<ShippingProps> = ({
                         data-testid="delivery-option-radio"
                         disabled={isDisabled}
                         className={clx(
-                          "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
+                          "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-4 mb-2 hover:shadow-borders-interactive-with-active small:px-6",
                           {
                             "border-ui-border-interactive":
                               option.id === shippingMethodId,
@@ -294,6 +294,16 @@ const Shipping: React.FC<ShippingProps> = ({
                     )
                   })}
                 </RadioGroup>
+
+                {(_shippingMethods?.length ?? 0) === 0 && !hasPickupOptions && (
+                  <Text
+                    className="txt-medium text-ui-fg-subtle"
+                    data-testid="no-delivery-options-message"
+                  >
+                    No delivery options are available for this address. Update
+                    your address or contact the store owner.
+                  </Text>
+                )}
               </div>
             </div>
           </div>
@@ -326,7 +336,7 @@ const Shipping: React.FC<ShippingProps> = ({
                           disabled={option.insufficient_inventory}
                           data-testid="delivery-option-radio"
                           className={clx(
-                            "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
+                            "flex items-center justify-between text-small-regular cursor-pointer py-4 border rounded-rounded px-4 mb-2 hover:shadow-borders-interactive-with-active small:px-6",
                             {
                               "border-ui-border-interactive":
                                 option.id === shippingMethodId,
@@ -387,7 +397,7 @@ const Shipping: React.FC<ShippingProps> = ({
         <div>
           <div className="text-small-regular">
             {cart && (cart.shipping_methods?.length ?? 0) > 0 && (
-              <div className="flex flex-col w-1/3">
+              <div className="flex w-full min-w-0 flex-col break-words">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
                   Method
                 </Text>

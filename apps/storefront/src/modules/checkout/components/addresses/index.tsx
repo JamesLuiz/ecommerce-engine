@@ -93,79 +93,77 @@ const Addresses = ({
         <div>
           <div className="text-small-regular">
             {cart && cart.shipping_address ? (
-              <div className="flex items-start gap-x-8">
-                <div className="flex items-start gap-x-1 w-full">
-                  <div
-                    className="flex flex-col w-1/3"
-                    data-testid="shipping-address-summary"
-                  >
-                    <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                      Shipping Address
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.first_name}{" "}
-                      {cart.shipping_address.last_name}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.address_1}{" "}
-                      {cart.shipping_address.address_2}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.postal_code},{" "}
-                      {cart.shipping_address.city}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.country_code?.toUpperCase()}
-                    </Text>
-                  </div>
+              <div className="flex w-full flex-col gap-y-6 xsmall:flex-row xsmall:items-start xsmall:gap-x-6">
+                <div
+                  className="flex min-w-0 flex-1 basis-0 flex-col break-words"
+                  data-testid="shipping-address-summary"
+                >
+                  <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                    Shipping Address
+                  </Text>
+                  <Text className="txt-medium text-ui-fg-subtle">
+                    {cart.shipping_address.first_name}{" "}
+                    {cart.shipping_address.last_name}
+                  </Text>
+                  <Text className="txt-medium text-ui-fg-subtle">
+                    {cart.shipping_address.address_1}{" "}
+                    {cart.shipping_address.address_2}
+                  </Text>
+                  <Text className="txt-medium text-ui-fg-subtle">
+                    {cart.shipping_address.postal_code},{" "}
+                    {cart.shipping_address.city}
+                  </Text>
+                  <Text className="txt-medium text-ui-fg-subtle">
+                    {cart.shipping_address.country_code?.toUpperCase()}
+                  </Text>
+                </div>
 
-                  <div
-                    className="flex flex-col w-1/3 "
-                    data-testid="shipping-contact-summary"
-                  >
-                    <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                      Contact
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.phone}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.email}
-                    </Text>
-                  </div>
+                <div
+                  className="flex min-w-0 flex-1 basis-0 flex-col break-words"
+                  data-testid="shipping-contact-summary"
+                >
+                  <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                    Contact
+                  </Text>
+                  <Text className="txt-medium text-ui-fg-subtle">
+                    {cart.shipping_address.phone}
+                  </Text>
+                  <Text className="txt-medium text-ui-fg-subtle">
+                    {cart.email}
+                  </Text>
+                </div>
 
-                  <div
-                    className="flex flex-col w-1/3"
-                    data-testid="billing-address-summary"
-                  >
-                    <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                      Billing Address
-                    </Text>
+                <div
+                  className="flex min-w-0 flex-1 basis-0 flex-col break-words"
+                  data-testid="billing-address-summary"
+                >
+                  <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                    Billing Address
+                  </Text>
 
-                    {sameAsBilling ? (
+                  {sameAsBilling ? (
+                    <Text className="txt-medium text-ui-fg-subtle">
+                      Billing and delivery address are the same.
+                    </Text>
+                  ) : (
+                    <>
                       <Text className="txt-medium text-ui-fg-subtle">
-                        Billing and delivery address are the same.
+                        {cart.billing_address?.first_name}{" "}
+                        {cart.billing_address?.last_name}
                       </Text>
-                    ) : (
-                      <>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.first_name}{" "}
-                          {cart.billing_address?.last_name}
-                        </Text>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.address_1}{" "}
-                          {cart.billing_address?.address_2}
-                        </Text>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.postal_code},{" "}
-                          {cart.billing_address?.city}
-                        </Text>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.country_code?.toUpperCase()}
-                        </Text>
-                      </>
-                    )}
-                  </div>
+                      <Text className="txt-medium text-ui-fg-subtle">
+                        {cart.billing_address?.address_1}{" "}
+                        {cart.billing_address?.address_2}
+                      </Text>
+                      <Text className="txt-medium text-ui-fg-subtle">
+                        {cart.billing_address?.postal_code},{" "}
+                        {cart.billing_address?.city}
+                      </Text>
+                      <Text className="txt-medium text-ui-fg-subtle">
+                        {cart.billing_address?.country_code?.toUpperCase()}
+                      </Text>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (

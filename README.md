@@ -32,6 +32,9 @@ This repository contains the whole platform:
 - [Local development](#local-development)
 - [Manual single-tenant deployment](#manual-single-tenant-deployment)
 
+Store owners configuring products, prices, categories, shipping, tax and regions
+should follow the [store setup guide](docs/store-setup-guide.md).
+
 ## What is in this repository
 
 | Path | What it is |
