@@ -1,5 +1,10 @@
 import { MedusaContainer } from "@medusajs/framework";
-import { DEFAULT_REGION_STORE_POLICIES } from "../lib/region-store-policies";
+import {
+  DEFAULT_REGION_STORE_POLICIES,
+  withDefaultRegionPolicies,
+} from "../lib/region-store-policies";
+import { CHECKOUT_DEFAULT_LOCATION_KEY } from "../lib/checkout-defaults";
+import { FIRST_TIME_REGION } from "../lib/first-time-defaults";
 import {
   ContainerRegistrationKeys,
   ModuleRegistrationName,
@@ -46,7 +51,7 @@ export default async function initial_data_seed({
   let defaultSalesChannel: any;
   try {
     const existingSalesChannels = await salesChannelModuleService.listSalesChannels(
-      { name: "Default Sales Channel" },
+      { name: FIRST_TIME_REGION.salesChannelName },
       { take: 1 }
     );
     defaultSalesChannel = existingSalesChannels?.[0];
@@ -60,7 +65,7 @@ export default async function initial_data_seed({
       input: {
         salesChannelsData: [
           {
-            name: "Default Sales Channel",
+            name: FIRST_TIME_REGION.salesChannelName,
             description: "Created by Medusa",
           },
         ],
@@ -181,7 +186,10 @@ export default async function initial_data_seed({
               currency_code: "ngn",
               countries,
               payment_providers: ["pp_system_default"],
-              metadata: DEFAULT_REGION_STORE_POLICIES,
+              metadata: {
+                ...withDefaultRegionPolicies(DEFAULT_REGION_STORE_POLICIES),
+                flowcheq_region: FIRST_TIME_REGION.code,
+              },
             },
           ],
         },
@@ -211,6 +219,16 @@ export default async function initial_data_seed({
     }
   } else {
     logger.info(`Nigeria region already exists (${region.id}), skipping creation.`);
+  }
+
+  try {
+    await storeModuleService.updateStores(store.id, {
+      default_region_id: region.id,
+    });
+  } catch (e) {
+    logger.warn(
+      `Could not set the store default region during seed: ${(e as Error)?.message ?? e}`
+    );
   }
 
   logger.info("Seeding tax regions...");
@@ -255,6 +273,7 @@ export default async function initial_data_seed({
               country_code: "NG",
               address_1: "",
             },
+            metadata: { [CHECKOUT_DEFAULT_LOCATION_KEY]: "true" },
           },
         ],
       },
@@ -355,11 +374,11 @@ export default async function initial_data_seed({
               prices: [
                 {
                   currency_code: "ngn",
-                  amount: 2500,
+                  amount: 0,
                 },
                 {
                   region_id: region.id,
-                  amount: 2500,
+                  amount: 0,
                 },
               ],
               rules: [
@@ -389,11 +408,11 @@ export default async function initial_data_seed({
               prices: [
                 {
                   currency_code: "ngn",
-                  amount: 5000,
+                  amount: 0,
                 },
                 {
                   region_id: region.id,
-                  amount: 5000,
+                  amount: 0,
                 },
               ],
               rules: [

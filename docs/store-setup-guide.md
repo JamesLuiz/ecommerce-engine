@@ -17,10 +17,13 @@ The order matters: prices, shipping options, tax rates and payment methods are
 all attached to a region or a country. Create the region first so the other
 screens have somewhere to attach their settings.
 
-New Flowcheq stores receive working defaults automatically: a tax region, a
-stock location linked to the storefront, flat-rate shipping options, installed
-payment providers, and stock for every product. Use the steps below to change
-those defaults or to repair a store created before this automation.
+New Flowcheq stores are prepared for Nigeria automatically: the region uses NGN,
+the tax region and Nigeria Warehouse are linked to the storefront sales channel,
+payment providers are enabled, and Standard and Express shipping start at
+`0.00` (free). Stock is added automatically for existing and newly listed
+products. Use the steps below to change those defaults, add other regions, or
+repair a store created before this automation. Existing settings are not
+overwritten when setup is rerun.
 
 ## 1. Set up regions
 
@@ -99,6 +102,10 @@ A service zone for pickup uses the same steps in the **Pickup** section. Pickup
 options need a location address and are only shown when pickup is enabled.
 
 ### 2.4 Create shipping options
+
+Flowcheq creates `Standard Shipping` and `Express Shipping` at `0.00` on a new
+store. Open an option to change its price whenever you want; later setup runs
+preserve the price you set.
 
 1. On the location details page, find your service zone under **Shipping**.
 2. Click **Create option** next to **Shipping options**.

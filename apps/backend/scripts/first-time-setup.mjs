@@ -4,7 +4,8 @@
  *
  * 1. Runs database migrations (`medusa db:migrate`)
  * 2. Prompts for admin email and password and creates the user (`medusa user`)
- * 3. Ensures a storefront publishable API key exists and prints its token
+ * 3. Applies Nigeria/NGN first-time defaults, free 0.00 shipping, the storefront
+ *    sales channel and warehouse links, and prints the publishable key token
  *
  * Run from apps/backend (or via npm script) with DATABASE_URL and other required
  * env vars set (see .env.template).
@@ -99,25 +100,28 @@ async function main() {
     )
   }
 
-  // 3) Publishable API key
+  // 3) Nigeria store defaults, checkout setup and publishable key
   console.log("")
   console.log(
-    "[first-time-setup] Step 3/3: Ensuring storefront publishable API key..."
+    "[first-time-setup] Step 3/3: Applying Nigeria store defaults and checkout setup..."
   )
-  const keyStatus = run("npx", [
+  const setupStatus = run("npx", [
     "--no-install",
     "medusa",
     "exec",
-    "./src/scripts/ensure-publishable-key.ts",
+    "./src/scripts/ensure-first-time-store.ts",
   ])
-  if (keyStatus !== 0) {
+  if (setupStatus !== 0) {
     fail(
-      `Publishable key step failed (exit code ${keyStatus}). You can create one later or rerun the key step with: npx medusa exec ./src/scripts/ensure-publishable-key.ts`
+      `Store setup failed (exit code ${setupStatus}). You can rerun just this step with: npx medusa exec ./src/scripts/ensure-first-time-store.ts`
     )
   }
 
   console.log("")
   console.log("[first-time-setup] Done.")
+  console.log(
+    "[first-time-setup] Store is ready: Nigeria region, Nigeria Warehouse, storefront sales channel, free 0.00 shipping and Paystack are connected."
+  )
   console.log(
     "[first-time-setup] Next: start the backend (npm run dev/start), sign in to /app with the admin user, and set MEDUSA_PUBLISHABLE_KEY in the storefront env if needed."
   )

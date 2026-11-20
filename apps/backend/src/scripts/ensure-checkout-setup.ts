@@ -8,9 +8,11 @@
  * - every enabled payment provider selected on the region (including Paystack)
  * - a stocked inventory level for every existing inventory item
  *
- * The stock location is marked with `flowcheq_checkout_default`, and the
- * `createProductsWorkflow` hook uses that marker to stock newly listed products.
- * Safe to run after every migration or container start.
+ * New options start at 0.00 (free). Valid prices a merchant changed later are
+ * preserved; set FLOWCHEQ_RESET_SHIPPING_PRICES=true for one run to restore the
+ * free defaults. The stock location is marked with `flowcheq_checkout_default`,
+ * and the `createProductsWorkflow` hook uses that marker to stock newly listed
+ * products. Safe to run after every migration or container start.
  *
  *   npx medusa exec ./src/scripts/ensure-checkout-setup.ts
  */
@@ -40,14 +42,18 @@ import {
   ensureInventoryLevelsForItems,
   isCheckoutDefaultLocation,
 } from "../lib/checkout-defaults"
+import {
+  FIRST_TIME_REGION,
+  FIRST_TIME_SHIPPING_PRICES,
+} from "../lib/first-time-defaults"
 
 const SYSTEM_TAX_PROVIDER = "tp_system"
 const MANUAL_FULFILLMENT_PROVIDER_ID = "manual_manual"
 
 const SHIPPING_PRICES: Record<string, { standard: number; express: number }> = {
-  ngn: { standard: 2500, express: 5000 },
-  usd: { standard: 1000, express: 2000 },
-  eur: { standard: 1000, express: 2000 },
+  ngn: FIRST_TIME_SHIPPING_PRICES,
+  usd: FIRST_TIME_SHIPPING_PRICES,
+  eur: FIRST_TIME_SHIPPING_PRICES,
 }
 
 const CheckoutSetupContextSchema = z.object({
@@ -56,6 +62,8 @@ const CheckoutSetupContextSchema = z.object({
   regionId: z.string().optional(),
   countryCode: z.string().length(2).optional(),
   currencyCode: z.string().length(3).optional(),
+  /** Explicitly reset valid prices to the free defaults. Never set by bootstrap. */
+  resetShippingPrices: z.boolean().optional(),
 })
 
 export type CheckoutSetupContext = z.infer<typeof CheckoutSetupContextSchema>
@@ -66,6 +74,7 @@ type RegionRow = {
   currency_code?: string | null
   countries?: { iso_2?: string | null }[] | null
   payment_providers?: { id?: string }[] | null
+  metadata?: Record<string, unknown> | null
 }
 
 type StockLocationRow = {
@@ -180,7 +189,8 @@ function buildPrices(
 function needsPriceRepair(
   prices: ShippingPriceRow[],
   currencyCode: string,
-  targetAmount: number
+  targetAmount: number,
+  enforceDefault: boolean
 ) {
   const targetPrices = prices.filter(
     (price) =>
@@ -192,7 +202,7 @@ function needsPriceRepair(
     prices.length === 0 ||
     prices.some((price) => !isValidPrice(price)) ||
     targetPrices.length !== 1 ||
-    toNumber(targetPrices[0]?.amount) !== targetAmount
+    (enforceDefault && toNumber(targetPrices[0]?.amount) !== targetAmount)
   )
 }
 
@@ -203,6 +213,9 @@ export default async function ensureCheckoutSetup(
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const context = CheckoutSetupContextSchema.parse(rawContext)
+  const resetShippingPrices =
+    context.resetShippingPrices ??
+    process.env.FLOWCHEQ_RESET_SHIPPING_PRICES === "true"
 
   const { data: stores } = await query.graph({
     entity: "store",
@@ -237,6 +250,7 @@ export default async function ensureCheckoutSetup(
       "currency_code",
       "countries.iso_2",
       "payment_providers.id",
+      "metadata",
     ],
   })
 
@@ -301,6 +315,18 @@ export default async function ensureCheckoutSetup(
   logger.info(
     `Configuring checkout for store "${store.name}" (${regionName}, ${currencyCode}).`
   )
+
+  if (resetShippingPrices && currencyCode === FIRST_TIME_REGION.currencyCode) {
+    await updateRegionsWorkflow(container).run({
+      input: {
+        selector: { id: region.id },
+        update: {
+          metadata: { ...(region.metadata ?? {}), shipping_rate: 0 },
+        },
+      },
+    })
+    logger.info("Reset the region shipping rate metadata to 0.00.")
+  }
 
   // --- Tax region -------------------------------------------------------------
   try {
@@ -578,7 +604,12 @@ export default async function ensureCheckoutSetup(
     const keeper =
       matches.find(
         (option) =>
-          !needsPriceRepair(option.prices ?? [], currencyCode, desired.amount)
+          !needsPriceRepair(
+            option.prices ?? [],
+            currencyCode,
+            desired.amount,
+            resetShippingPrices
+          )
       ) ?? matches[0]
 
     if (keeper) {
@@ -590,7 +621,14 @@ export default async function ensureCheckoutSetup(
 
       const prices = keeper.prices ?? []
 
-      if (needsPriceRepair(prices, currencyCode, desired.amount)) {
+      if (
+        needsPriceRepair(
+          prices,
+          currencyCode,
+          desired.amount,
+          resetShippingPrices
+        )
+      ) {
         await updateShippingOptionsWorkflow(container).run({
           input: [
             {

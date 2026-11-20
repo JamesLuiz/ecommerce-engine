@@ -18,6 +18,7 @@
     "dev": "medusa develop",
     "lint": "medusa lint",
     "setup:first": "node scripts/first-time-setup.mjs",
+    "setup:defaults": "medusa exec ./src/scripts/ensure-first-time-store.ts",
     "setup:publishable-key": "medusa exec ./src/scripts/ensure-publishable-key.ts",
     "setup:nigeria-pricing": "medusa exec ./src/scripts/ensure-nigeria-pricing.ts",
     "setup:checkout": "medusa exec ./src/scripts/ensure-checkout-setup.ts",

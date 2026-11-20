@@ -18,7 +18,14 @@ import {
 
 const TITLE = "storefront"
 
-export default async function ensurePublishableKey({ container }: ExecArgs) {
+export type PublishableKeyContext = {
+  salesChannelId?: string
+}
+
+export default async function ensurePublishableKey(
+  { container }: ExecArgs,
+  context: PublishableKeyContext = {}
+) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const pgConnection = container.resolve(ContainerRegistrationKeys.PG_CONNECTION)
@@ -29,7 +36,8 @@ export default async function ensurePublishableKey({ container }: ExecArgs) {
     {},
     { take: 1, order: { created_at: "ASC" } }
   )
-  const salesChannelId = salesChannels[0]?.id as string | undefined
+  const salesChannelId = (context.salesChannelId ??
+    salesChannels[0]?.id) as string | undefined
 
   // Find or create the publishable key.
   const { data: publishableKeys } = await query.graph({

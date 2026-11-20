@@ -34,21 +34,18 @@ import {
   updateSalesChannelsWorkflow,
   updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows"
+import {
+  BOOTSTRAP_COMPLETE_KEY,
+  FIRST_TIME_REGION,
+  FIRST_TIME_SHIPPING_PRICES,
+  hasCompletedBootstrap,
+} from "../lib/first-time-defaults"
+import { withDefaultRegionPolicies } from "../lib/region-store-policies"
 import ensureCheckoutSetup from "./ensure-checkout-setup"
 import seedDemoProducts from "./seed-demo-products"
 
-const DEFAULT_SALES_CHANNEL_NAME = "Default Sales Channel"
 const STOREFRONT_API_KEY_TITLE = "storefront"
 const SYSTEM_PAYMENT_PROVIDER = "pp_system_default"
-
-const REGION_PRESETS: Record<
-  "ng" | "us" | "eu",
-  { name: string; countries: string[] }
-> = {
-  ng: { name: "Nigeria", countries: ["ng"] },
-  us: { name: "United States", countries: ["us"] },
-  eu: { name: "Europe", countries: ["de", "fr", "es", "it", "nl"] },
-}
 
 function readTenantConfig(): TenantConfig | null {
   const raw = process.env.TENANT_CONFIG
@@ -103,20 +100,32 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
     const storeService = container.resolve(Modules.STORE)
     const userService = container.resolve(Modules.USER)
 
-  const currencyCode = config.currency.toLowerCase()
-  const regionPreset = REGION_PRESETS[config.region]
+    const [existingStore] = await storeService.listStores({}, { take: 1 })
+    const alreadyBootstrapped = hasCompletedBootstrap(existingStore?.metadata)
+    const currencyCode = FIRST_TIME_REGION.currencyCode
+    const regionPreset = FIRST_TIME_REGION
 
-  logger.info(`Bootstrapping tenant "${config.slug}".`)
+    logger.info(`Bootstrapping tenant "${config.slug}" with Nigeria defaults.`)
 
   // --- Region -----------------------------------------------------------------
   const regions = await regionService.listRegions({})
-  const existingRegion = regions.find(
-    (candidate) => candidate.metadata?.flowcheq_region === config.region
+  const markedRegion = regions.find(
+    (candidate) => candidate.metadata?.flowcheq_region === FIRST_TIME_REGION.code
   )
+  const storedRegion = regions.find(
+    (candidate) => candidate.id === existingStore?.default_region_id
+  )
+  const existingRegion = alreadyBootstrapped
+    ? storedRegion ?? markedRegion ?? regions[0]
+    : markedRegion
   let regionId: string
 
   if (existingRegion) {
-    logger.info(`Region for "${config.region}" already exists.`)
+    logger.info(
+      alreadyBootstrapped
+        ? `Using the existing region "${existingRegion.id}".`
+        : `Using the ${FIRST_TIME_REGION.name} region "${existingRegion.id}".`
+    )
     regionId = existingRegion.id
   } else {
     const existingWithOverlap = regions.find((candidate) =>
@@ -126,12 +135,13 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
     )
 
     if (existingWithOverlap) {
-      // A country can only belong to one region. When the starter data already
-      // assigned the same countries (the Europe region covers these codes), the
-      // tenant reuses that region instead of creating a conflicting one.
+      // A country can only belong to one region. Reuse the starter region
+      // instead of creating a conflicting one.
       const countries = Array.from(
         new Set([
-          ...(existingWithOverlap.countries ?? []).map((country) => country.iso_2 ?? ""),
+          ...(existingWithOverlap.countries ?? []).map(
+            (country) => country.iso_2 ?? ""
+          ),
           ...regionPreset.countries,
         ])
       )
@@ -144,17 +154,15 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
             currency_code: currencyCode,
             countries,
             metadata: {
-              ...existingWithOverlap.metadata,
-              flowcheq_region: config.region,
+              ...withDefaultRegionPolicies(existingWithOverlap.metadata),
+              flowcheq_region: FIRST_TIME_REGION.code,
             },
           },
         },
       })
 
       regionId = result[0].id
-      logger.info(
-        `Reused the existing region "${regionPreset.name}" for "${config.region}".`
-      )
+      logger.info(`Reused the existing region "${regionPreset.name}".`)
     } else {
       const { result } = await createRegionsWorkflow(container).run({
         input: {
@@ -162,9 +170,12 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
             {
               name: regionPreset.name,
               currency_code: currencyCode,
-              countries: regionPreset.countries,
+              countries: [...regionPreset.countries],
               payment_providers: [SYSTEM_PAYMENT_PROVIDER],
-              metadata: { flowcheq_region: config.region },
+              metadata: {
+                ...withDefaultRegionPolicies(),
+                flowcheq_region: FIRST_TIME_REGION.code,
+              },
             },
           ],
         },
@@ -175,19 +186,65 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
     }
   }
 
+  // Later runs follow the merchant's current region; only first run is Nigeria.
+  const selectedRegion = regions.find((candidate) => candidate.id === regionId)
+  const activeCurrencyCode = (
+    alreadyBootstrapped
+      ? selectedRegion?.currency_code ?? currencyCode
+      : currencyCode
+  ).toLowerCase()
+  const activeCountryCode = (
+    alreadyBootstrapped
+      ? selectedRegion?.countries?.find((country) =>
+          /^[a-z]{2}$/.test(country.iso_2 ?? "")
+        )?.iso_2 ?? regionPreset.countries[0]
+      : regionPreset.countries[0]
+  ).toLowerCase()
+
   // --- Sales channel ----------------------------------------------------------
   const salesChannels = await salesChannelService.listSalesChannels({})
-  let salesChannel = salesChannels.find(
-    (candidate) => candidate.name === config.businessName
-  )
+  let salesChannel = alreadyBootstrapped
+    ? salesChannels.find(
+        (candidate) => candidate.id === existingStore?.default_sales_channel_id
+      )
+    : undefined
 
   if (!salesChannel) {
+    salesChannel = salesChannels.find(
+      (candidate) => candidate.name === config.businessName
+    )
+  }
+
+  if (!salesChannel) {
+    salesChannel = salesChannels.find(
+      (candidate) => candidate.name === FIRST_TIME_REGION.salesChannelName
+    )
+  }
+
+  if (!salesChannel) {
+    salesChannel = salesChannels[0]
+  }
+
+  if (!salesChannel) {
+    const { result } = await createSalesChannelsWorkflow(container).run({
+      input: {
+        salesChannelsData: [
+          {
+            name: config.businessName,
+            description: "Created by Flowcheq Commerce",
+          },
+        ],
+      },
+    })
+
+    salesChannel = result[0]
+    logger.info(`Created sales channel "${config.businessName}".`)
+  } else if (!alreadyBootstrapped) {
     const defaultSalesChannel = salesChannels.find(
-      (candidate) =>
-        candidate.name === DEFAULT_SALES_CHANNEL_NAME
+      (candidate) => candidate.name === FIRST_TIME_REGION.salesChannelName
     )
 
-    if (defaultSalesChannel) {
+    if (defaultSalesChannel && defaultSalesChannel.id === salesChannel.id) {
       const { result } = await updateSalesChannelsWorkflow(container).run({
         input: {
           selector: { id: defaultSalesChannel.id },
@@ -198,26 +255,14 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
       salesChannel = result[0]
       logger.info("Renamed the default sales channel for this tenant.")
     } else {
-      const { result } = await createSalesChannelsWorkflow(container).run({
-        input: {
-          salesChannelsData: [
-            {
-              name: config.businessName,
-              description: "Created by Flowcheq Commerce",
-            },
-          ],
-        },
-      })
-
-      salesChannel = result[0]
-      logger.info(`Created sales channel "${config.businessName}".`)
+      logger.info(`Using sales channel "${salesChannel.name}".`)
     }
   } else {
-    logger.info(`Sales channel "${config.businessName}" already exists.`)
+    logger.info(`Using sales channel "${salesChannel.name}".`)
   }
 
   // --- Store ------------------------------------------------------------------
-  const [store] = await storeService.listStores({}, { take: 1 })
+  const store = existingStore
 
   const buildDefaultStorefrontMetadata = () => {
     const brandName = config.businessName
@@ -326,7 +371,10 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
             ],
             default_sales_channel_id: salesChannel.id,
             default_region_id: regionId,
-            metadata: buildDefaultStorefrontMetadata(),
+            metadata: {
+              ...buildDefaultStorefrontMetadata(),
+              [BOOTSTRAP_COMPLETE_KEY]: "true",
+            },
           },
         ],
       },
@@ -337,30 +385,42 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
   } else {
     const existingMetadata = (store.metadata ?? {}) as Record<string, unknown>
     const hasStorefrontSettings = Boolean(existingMetadata[STOREFRONT_SETTINGS_METADATA_KEY])
-    const nextMetadata = hasStorefrontSettings
-      ? existingMetadata
-      : { ...existingMetadata, ...buildDefaultStorefrontMetadata() }
+    const hasBootstrapMarker = hasCompletedBootstrap(existingMetadata)
+    const nextMetadata = {
+      ...existingMetadata,
+      ...(hasStorefrontSettings ? {} : buildDefaultStorefrontMetadata()),
+      ...(hasBootstrapMarker ? {} : { [BOOTSTRAP_COMPLETE_KEY]: "true" }),
+    }
 
-    const { result } = await updateStoresWorkflow(container).run({
-      input: {
-        selector: { id: store.id },
-        update: {
-          name: config.businessName,
-          supported_currencies: [
-            { currency_code: currencyCode, is_default: true },
-          ],
-          default_sales_channel_id: salesChannel.id,
-          default_region_id: regionId,
-          ...(hasStorefrontSettings ? {} : { metadata: nextMetadata }),
-        },
-      },
-    })
-
-    activeStore = result[0] ?? store
-    if (hasStorefrontSettings) {
-      logger.info(`Updated store "${config.businessName}" (kept existing storefront settings).`)
+    if (hasBootstrapMarker && hasStorefrontSettings) {
+      activeStore = store
+      logger.info("Store already bootstrapped; kept existing settings.")
     } else {
-      logger.info(`Updated store "${config.businessName}" and seeded default storefront settings.`)
+      const { result } = await updateStoresWorkflow(container).run({
+        input: {
+          selector: { id: store.id },
+          update: {
+            ...(hasBootstrapMarker
+              ? {}
+              : {
+                  name: config.businessName,
+                  supported_currencies: [
+                    { currency_code: currencyCode, is_default: true },
+                  ],
+                  default_sales_channel_id: salesChannel.id,
+                  default_region_id: regionId,
+                }),
+            metadata: nextMetadata,
+          },
+        },
+      })
+
+      activeStore = result[0] ?? store
+      logger.info(
+        hasBootstrapMarker
+          ? "Seeded missing storefront settings."
+          : "Applied Nigeria defaults and seeded storefront settings."
+      )
     }
   }
 
@@ -418,9 +478,14 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
       storeId: activeStore.id,
       salesChannelId: salesChannel.id,
       regionId,
-      countryCode: regionPreset.countries[0],
-      currencyCode,
+      countryCode: activeCountryCode,
+      currencyCode: activeCurrencyCode,
+      resetShippingPrices: false,
     })
+
+    logger.info(
+      `Checkout defaults ready with free ${FIRST_TIME_SHIPPING_PRICES.standard.toFixed(2)} shipping.`
+    )
   } catch (error) {
     logger.warn(
       `Checkout setup will retry on the next start: ${
