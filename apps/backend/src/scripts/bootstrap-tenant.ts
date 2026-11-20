@@ -34,6 +34,7 @@ import {
   updateSalesChannelsWorkflow,
   updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows"
+import ensureCheckoutSetup from "./ensure-checkout-setup"
 import seedDemoProducts from "./seed-demo-products"
 
 const DEFAULT_SALES_CHANNEL_NAME = "Default Sales Channel"
@@ -408,6 +409,24 @@ export default async function bootstrapTenant({ container, args }: ExecArgs) {
     logger.info("Linked the storefront publishable key to the sales channel.")
   } else {
     logger.info("Publishable key is already linked to the sales channel.")
+  }
+
+  // --- Checkout defaults -----------------------------------------------------
+  // Must run before demo products so the productsCreated hook can stock them.
+  try {
+    await ensureCheckoutSetup({ container, args }, {
+      storeId: activeStore.id,
+      salesChannelId: salesChannel.id,
+      regionId,
+      countryCode: regionPreset.countries[0],
+      currencyCode,
+    })
+  } catch (error) {
+    logger.warn(
+      `Checkout setup will retry on the next start: ${
+        (error as Error)?.message ?? String(error)
+      }`
+    )
   }
 
   // --- Admin invite -----------------------------------------------------------

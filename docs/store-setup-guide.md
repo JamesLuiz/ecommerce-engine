@@ -17,6 +17,11 @@ The order matters: prices, shipping options, tax rates and payment methods are
 all attached to a region or a country. Create the region first so the other
 screens have somewhere to attach their settings.
 
+New Flowcheq stores receive working defaults automatically: a tax region, a
+stock location linked to the storefront, flat-rate shipping options, installed
+payment providers, and stock for every product. Use the steps below to change
+those defaults or to repair a store created before this automation.
+
 ## 1. Set up regions
 
 A region is a group of countries that share a currency and checkout settings.
