@@ -15,6 +15,13 @@
       "when": 1794999022070,
       "tag": "0001_lonely_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795157122675,
+      "tag": "0002_referral_program",
+      "breakpoints": true
     }
   ]
 }

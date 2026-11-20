@@ -7,6 +7,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core"
 import { primaryKey } from "drizzle-orm/pg-core"
@@ -40,6 +41,33 @@ export const plans = pgTable("plans", {
   interval: text("interval").notNull(),
 })
 
+/**
+ * People enrolled in the referral programme. `code` is public and travels in
+ * referral links; `access_token` is a private capability for the /me page.
+ * Bank account numbers are encrypted with SECRETS_ENCRYPTION_KEY.
+ */
+export const referral_enrollments = pgTable(
+  "referral_enrollments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    bank_name: text("bank_name").notNull(),
+    account_number_enc: text("account_number_enc").notNull(),
+    code: text("code").notNull(),
+    access_token: text("access_token").notNull(),
+    status: text("status").default("active").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("referral_enrollments_email_idx").on(table.email),
+    uniqueIndex("referral_enrollments_code_idx").on(table.code),
+    uniqueIndex("referral_enrollments_access_token_idx").on(table.access_token),
+  ]
+)
+
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey().defaultRandom(),
   customer_id: uuid("customer_id")
@@ -52,12 +80,73 @@ export const orders = pgTable("orders", {
   currency: text("currency").notNull(),
   status: text("status").default("pending").notNull(),
   signup_payload: jsonb("signup_payload").notNull(),
+  referral_enrollment_id: uuid("referral_enrollment_id").references(
+    () => referral_enrollments.id,
+    { onDelete: "set null" }
+  ),
   created_at: timestamp("created_at", { withTimezone: true })
     .default(sql`now()`)
     .notNull(),
   paid_at: timestamp("paid_at", { withTimezone: true }),
   fulfilled_at: timestamp("fulfilled_at", { withTimezone: true }),
 })
+
+/**
+ * A manual payout run for one enrollee. All unsettled earnings for that
+ * enrollee are attached to a single settlement record when staff mark it paid.
+ */
+export const referral_settlements = pgTable(
+  "referral_settlements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    enrollment_id: uuid("enrollment_id")
+      .notNull()
+      .references(() => referral_enrollments.id, { onDelete: "cascade" }),
+    amount_minor: integer("amount_minor").notNull(),
+    currency: text("currency").default("NGN").notNull(),
+    payment_reference: text("payment_reference"),
+    notes: text("notes"),
+    settled_by: text("settled_by").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => [index("referral_settlements_enrollment_idx").on(table.enrollment_id)]
+)
+
+/**
+ * One NGN 18,000 credit per successful referred plan order. The unique order
+ * constraint makes repeated payment webhooks harmless.
+ */
+export const referral_earnings = pgTable(
+  "referral_earnings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    enrollment_id: uuid("enrollment_id")
+      .notNull()
+      .references(() => referral_enrollments.id, { onDelete: "cascade" }),
+    order_id: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    customer_id: uuid("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    amount_minor: integer("amount_minor").notNull(),
+    currency: text("currency").default("NGN").notNull(),
+    settlement_id: uuid("settlement_id").references(() => referral_settlements.id, {
+      onDelete: "set null",
+    }),
+    settled_at: timestamp("settled_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("referral_earnings_order_idx").on(table.order_id),
+    index("referral_earnings_enrollment_idx").on(table.enrollment_id),
+    index("referral_earnings_settlement_idx").on(table.settlement_id),
+  ]
+)
 
 export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -128,6 +217,36 @@ export const audit_log = pgTable("audit_log", {
 export const customersRelations = relations(customers, ({ many }) => ({
   sessions: many(sessions),
   orders: many(orders),
+  referralEarnings: many(referral_earnings),
+}))
+
+export const referralEnrollmentsRelations = relations(referral_enrollments, ({ many }) => ({
+  earnings: many(referral_earnings),
+  settlements: many(referral_settlements),
+  orders: many(orders),
+}))
+
+export const referralEarningsRelations = relations(referral_earnings, ({ one }) => ({
+  enrollment: one(referral_enrollments, {
+    fields: [referral_earnings.enrollment_id],
+    references: [referral_enrollments.id],
+  }),
+  order: one(orders, {
+    fields: [referral_earnings.order_id],
+    references: [orders.id],
+  }),
+  settlement: one(referral_settlements, {
+    fields: [referral_earnings.settlement_id],
+    references: [referral_settlements.id],
+  }),
+}))
+
+export const referralSettlementsRelations = relations(referral_settlements, ({ one, many }) => ({
+  enrollment: one(referral_enrollments, {
+    fields: [referral_settlements.enrollment_id],
+    references: [referral_enrollments.id],
+  }),
+  earnings: many(referral_earnings),
 }))
 
 export type Customer = typeof customers.$inferSelect
@@ -137,6 +256,9 @@ export type Release = typeof releases.$inferSelect
 export type AuditLog = typeof audit_log.$inferSelect
 export type Order = typeof orders.$inferSelect
 export type TenantSecret = typeof tenant_secrets.$inferSelect
+export type ReferralEnrollment = typeof referral_enrollments.$inferSelect
+export type ReferralEarning = typeof referral_earnings.$inferSelect
+export type ReferralSettlement = typeof referral_settlements.$inferSelect
 
 export const schema = {
   customers,
@@ -148,4 +270,7 @@ export const schema = {
   provision_steps,
   releases,
   audit_log,
+  referral_enrollments,
+  referral_earnings,
+  referral_settlements,
 }
