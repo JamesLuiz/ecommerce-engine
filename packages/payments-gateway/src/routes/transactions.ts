@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import type { Context } from "hono"
 import { db } from "../db.js"
-import { PaystackClient } from "../services/paystack.js"
+import { PaystackClient, isInvalidSubaccountError } from "../services/paystack.js"
 import { findSettlementByVendorId } from "../services/settlement.js"
 import {
   createTransaction,
@@ -106,16 +106,51 @@ transactionsRouter.post("/transactions/initialize", async (c: Context<VendorEnv>
     process.env.PAYSTACK_BASE_URL ?? "https://api.paystack.co",
   )
 
-  const initialized = await client.initialize({
-    email: input.email,
-    amount: input.amount,
-    currency: input.currency,
-    reference,
-    callback_url: input.callback_url,
-    subaccount: settlement.subaccount_code,
-    vendor_id: vendor.id,
-    external_ref: input.external_ref,
-  })
+  let initialized: Awaited<ReturnType<PaystackClient["initialize"]>>
+
+  try {
+    initialized = await client.initialize({
+      email: input.email,
+      amount: input.amount,
+      currency: input.currency,
+      reference,
+      callback_url: input.callback_url,
+      subaccount: settlement.subaccount_code,
+      vendor_id: vendor.id,
+      external_ref: input.external_ref,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Paystack rejected the transaction."
+
+    await updateTransaction(reference, {
+      status: "failed",
+      gateway_response: { error: message },
+    })
+
+    if (isInvalidSubaccountError(error)) {
+      logger.error(
+        {
+          vendor: vendor.slug,
+          subaccount_code: settlement.subaccount_code,
+          error: message,
+        },
+        "Paystack rejected the vendor settlement subaccount",
+      )
+
+      return c.json(
+        {
+          error: {
+            code: "settlement_subaccount_invalid",
+            message:
+              "Paystack rejected this store's settlement subaccount. An administrator must re-save the settlement bank account in Payments > Settlement so the gateway creates a subaccount under the current Paystack key.",
+          },
+        },
+        409,
+      )
+    }
+
+    throw error
+  }
 
   await updateTransaction(reference, {
     status: "pending",

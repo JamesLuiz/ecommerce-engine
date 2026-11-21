@@ -50,6 +50,27 @@ type PaystackEnvelope<T> = {
   meta?: PaystackMeta
 }
 
+export class PaystackRequestError extends Error {
+  readonly path: string
+  readonly status?: number
+
+  constructor(path: string, message: string, status?: number) {
+    super(message)
+    this.name = "PaystackRequestError"
+    this.path = path
+    this.status = status
+  }
+}
+
+/**
+ * Paystack returns "Invalid Subaccount" when the stored code does not exist
+ * under the configured secret key. The usual causes are a test/live key switch
+ * or a subaccount deleted in the Paystack dashboard.
+ */
+export const isInvalidSubaccountError = (error: unknown): boolean =>
+  error instanceof Error &&
+  /invalid\s+subaccount|subaccount.*(not\s+found|does\s+not\s+exist)/i.test(error.message)
+
 export class PaystackClient {
   private readonly secretKey: string
   private readonly baseUrl: string
@@ -77,15 +98,17 @@ export class PaystackClient {
       | null
 
     if (!response.ok || payload?.status === false) {
-      throw new Error(
+      throw new PaystackRequestError(
+        path,
         `Paystack request failed for ${path}: ${
           payload?.message ?? `HTTP ${response.status}`
         }`,
+        response.status,
       )
     }
 
     if (!payload?.data) {
-      throw new Error(`Paystack returned no data for ${path}`)
+      throw new PaystackRequestError(path, `Paystack returned no data for ${path}`, response.status)
     }
 
     return payload
@@ -184,6 +207,7 @@ export class PaystackClient {
       settlement_bank: string
       account_number: string
       percentage_charge: number
+      active?: boolean
     },
   ): Promise<PaystackSubaccount> {
     const data = await this.request<PaystackSubaccount>(
@@ -192,6 +216,14 @@ export class PaystackClient {
         method: "PUT",
         body: JSON.stringify(input),
       },
+    )
+
+    return data
+  }
+
+  async getSubaccount(accountCode: string): Promise<PaystackSubaccount> {
+    const data = await this.request<PaystackSubaccount>(
+      `/subaccount/${encodeURIComponent(accountCode)}`,
     )
 
     return data

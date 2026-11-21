@@ -1,5 +1,6 @@
 import { db } from "../db.js"
-import type { PaystackClient } from "./paystack.js"
+import { logger } from "../logger.js"
+import { isInvalidSubaccountError, type PaystackClient } from "./paystack.js"
 import { AccountResolveError, resolveBankAccount } from "./accounts.js"
 import { countryForCurrency, isPaystackTestKey } from "./banks.js"
 import { findVendorById } from "./vendors.js"
@@ -77,6 +78,37 @@ const isTestModeResolveLimit = (error: unknown): boolean =>
 const isInvalidAccountDetails = (error: unknown): boolean =>
   error instanceof Error && /account details are invalid/i.test(error.message)
 
+type SubaccountInput = Parameters<PaystackClient["createSubaccount"]>[0]
+
+/** Recreate a stale subaccount (for example after a test/live key switch). */
+const ensurePaystackSubaccount = async (
+  client: PaystackClient,
+  existing: Settlement | null,
+  input: SubaccountInput,
+): Promise<Awaited<ReturnType<PaystackClient["createSubaccount"]>>> => {
+  if (!existing) {
+    return client.createSubaccount(input)
+  }
+
+  try {
+    return await client.updateSubaccount(existing.subaccount_code, { ...input, active: true })
+  } catch (error) {
+    if (!isInvalidSubaccountError(error)) {
+      throw error
+    }
+
+    logger.warn(
+      {
+        vendor_id: existing.vendor_id,
+        subaccount_code: existing.subaccount_code,
+      },
+      "Stored Paystack subaccount was rejected; creating a replacement",
+    )
+
+    return client.createSubaccount(input)
+  }
+}
+
 export const saveSettlement = async (
   client: PaystackClient,
   vendorId: string,
@@ -134,9 +166,7 @@ export const saveSettlement = async (
   let subaccount: Awaited<ReturnType<PaystackClient["createSubaccount"]>>
 
   try {
-    subaccount = existing
-      ? await client.updateSubaccount(existing.subaccount_code, subaccountInput)
-      : await client.createSubaccount(subaccountInput)
+    subaccount = await ensurePaystackSubaccount(client, existing, subaccountInput)
   } catch (error) {
     if (isInvalidAccountDetails(error)) {
       throw new SettlementError(

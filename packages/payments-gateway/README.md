@@ -142,6 +142,14 @@ account name is taken from the subaccount response. Live mode always resolves
 first. Replace the test settlement account with a real one before switching to a
 live Paystack key.
 
+If Paystack rejects the stored subaccount during
+`POST /v1/transactions/initialize`, the gateway marks the transaction failed and
+returns `409 settlement_subaccount_invalid` with an actionable message instead of
+a generic 500. Re-saving the settlement account with `PUT /v1/settlement` tries
+to update the stored subaccount first; when Paystack reports it as invalid, the
+gateway creates a fresh subaccount and stores the new code. `GET /v1/settlement`
+returns `subaccount_code` and `paystack_mode` (`test` or `live`) for diagnosis.
+
 `GET /admin/vendors/:id`, `POST /admin/vendors` and `POST /admin/vendors/ensure`
 all return `webhook_signing_secret`, the HMAC secret used to sign forwarded
 webhooks. It is derived from `WEBHOOK_SIGNING_ROOT` and the vendor id, so

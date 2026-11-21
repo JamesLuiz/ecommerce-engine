@@ -769,6 +769,7 @@ Release rings are recorded intent only. Automated ring rollout, snapshotting and
 | Storefront exits with `Missing required storefront environment variables` | `MEDUSA_BACKEND_URL` or `MEDUSA_PUBLISHABLE_KEY` missing | set both on the storefront application |
 | Storefront returns `Region not found` | publishable key is not linked to the sales channel, or the country is not in a region | check the tenant database and the region settings |
 | Checkout does not offer Paystack | provider is not enabled on the region, or settlement is not configured | add the Paystack Gateway provider in the region and save a settlement account |
+| Checkout returns `settlement_subaccount_invalid` or `Invalid Subaccount` | stored subaccount was created under a different Paystack key (test/live) or was deleted | inspect `GET /v1/settlement` (`subaccount_code`, `paystack_mode`) and re-save the bank account in Admin > Payments > Settlement; the gateway recreates a stale subaccount |
 | Paystack webhooks are stored but not forwarded | gateway worker is not running | start `dist/worker.js` |
 | Plan payment succeeds but no store is provisioned | gateway has no `DASHBOARD_URL` or `ORDER_WEBHOOK_SECRET`, or the order `provider_reference` does not match the payment reference | set both variables on the gateway, check the order reference, and look for `order.paid` in the dashboard audit log |
 | Bank resolve fails in test mode | Paystack test daily limit | use bank code `001`, wait for the limit to reset, or use a live key |

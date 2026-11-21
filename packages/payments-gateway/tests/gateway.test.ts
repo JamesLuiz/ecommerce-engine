@@ -319,6 +319,83 @@ describe("Gateway Payments API & Webhooks", () => {
       const body = (await res.json()) as any
       expect(body.error.code).toBe("invalid_callback_origin")
     })
+
+    it("returns an actionable 409 when Paystack rejects the settlement subaccount", async () => {
+      const transactionRow = {
+        reference: "acme_test",
+        vendor_id: vendorId,
+        external_ref: "payses_123",
+        amount: 500000,
+        currency: "NGN",
+        status: "pending",
+        customer_email: "buyer@example.com",
+        channel: null,
+        fees: null,
+        paid_at: null,
+        gateway_response: null,
+        paystack_id: null,
+        subaccount_code: activeSettlement.subaccount_code,
+        metadata: {},
+        created_at: new Date(),
+        updated_at: new Date(),
+      }
+
+      mockDb.unsafe.mockImplementation(async (query: string) => {
+        if (query.includes("select * from vendors where token_hash")) {
+          return [activeVendor]
+        }
+        if (query.includes("select * from settlements where vendor_id = $1")) {
+          return [activeSettlement]
+        }
+        if (
+          query.includes("insert into transactions") ||
+          query.includes("update transactions set")
+        ) {
+          return [transactionRow]
+        }
+        return []
+      })
+
+      const originalFetch = global.fetch
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ status: false, message: "Invalid Subaccount." }),
+      } as Response) as unknown as typeof fetch
+
+      try {
+        const res = await app.request("/v1/transactions/initialize", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${rawToken}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            amount: 500000,
+            currency: "NGN",
+            email: "buyer@example.com",
+            external_ref: "payses_123",
+            callback_url: "https://acme.example.com/checkout/callback",
+          }),
+        })
+
+        expect(res.status).toBe(409)
+        const body = (await res.json()) as any
+        expect(body.error.code).toBe("settlement_subaccount_invalid")
+        expect(body.error.message).toContain("re-save the settlement bank account")
+
+        expect(
+          mockDb.unsafe.mock.calls.some(
+            ([sql, params]) =>
+              String(sql).includes("update transactions set") &&
+              Array.isArray(params) &&
+              params.includes("failed"),
+          ),
+        ).toBe(true)
+      } finally {
+        global.fetch = originalFetch
+      }
+    })
   })
 
   describe("Transaction Verify (/v1/transactions/verify/:reference)", () => {

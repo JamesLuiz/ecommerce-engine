@@ -3,6 +3,7 @@ import type { Context } from "hono"
 import { z } from "zod"
 import { findSettlementByVendorId, saveSettlement } from "../services/settlement.js"
 import { resolveBankAccount } from "../services/accounts.js"
+import { isPaystackTestKey } from "../services/banks.js"
 import { createPaystackClient } from "../services/paystack.js"
 import { vendorAuth } from "../middleware/vendorAuth.js"
 import { resolveAccountRateLimit } from "../middleware/rateLimit.js"
@@ -76,6 +77,8 @@ settlementRouter.get("/settlement", async (c: Context<VendorEnv>) => {
     bank_name: settlement.bank_name,
     account_number_last4: settlement.account_number_last4,
     account_name: settlement.account_name,
+    subaccount_code: settlement.subaccount_code,
+    paystack_mode: isPaystackTestKey(process.env.PAYSTACK_SECRET_KEY ?? "") ? "test" : "live",
     status: settlement.status,
     verified_at: settlement.verified_at,
   })

@@ -184,9 +184,41 @@ describe("saveSettlement", () => {
       settlement_bank: "058",
       account_number: "0123456789",
       percentage_charge: 0,
+      active: true,
     })
     expect(client.createSubaccount).not.toHaveBeenCalled()
     expect(settlement.subaccount_code).toBe("ACCT_OLD")
+
+    const auditCall = unsafe.mock.calls.find(([sql]) =>
+      String(sql).includes("settlement_audit"),
+    )
+
+    expect((auditCall?.[1] as unknown[])[1]).toBe("updated")
+  })
+
+  it("recreates a stale subaccount when the settlement account is re-saved", async () => {
+    mockDb({ existing: existingSettlementRow })
+    const client = fakeClient()
+
+    vi.mocked(client.updateSubaccount).mockRejectedValue(
+      new Error("Paystack request failed for /subaccount/ACCT_OLD: Invalid Subaccount."),
+    )
+
+    const settlement = await saveSettlement(client, vendorId, {
+      bank_code: "058",
+      account_number: "0123456789",
+      actor: "admin",
+    })
+
+    expect(client.updateSubaccount).toHaveBeenCalledWith("ACCT_OLD", {
+      business_name: "Acme Store",
+      settlement_bank: "058",
+      account_number: "0123456789",
+      percentage_charge: 0,
+      active: true,
+    })
+    expect(client.createSubaccount).toHaveBeenCalledTimes(1)
+    expect(settlement.subaccount_code).toBe("ACCT_123")
 
     const auditCall = unsafe.mock.calls.find(([sql]) =>
       String(sql).includes("settlement_audit"),

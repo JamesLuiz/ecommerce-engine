@@ -6,6 +6,7 @@ export type ErrorCode =
   | "vendor_suspended"
   | "not_found"
   | "settlement_not_configured"
+  | "settlement_subaccount_invalid"
   | "settlement_cooldown"
   | "account_resolve_failed"
   | "account_number_mismatch"

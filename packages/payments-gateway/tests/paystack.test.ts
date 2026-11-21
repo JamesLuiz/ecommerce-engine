@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { PaystackClient } from "../src/services/paystack"
+import { isInvalidSubaccountError, PaystackClient } from "../src/services/paystack"
 
 const client = (): PaystackClient => new PaystackClient("sk_test", "https://api.paystack.co")
 
@@ -181,5 +181,42 @@ describe("PaystackClient", () => {
       vendor_id: "vnd_123",
       external_ref: "payses_123",
     })
+  })
+
+  it("reads a subaccount through the Paystack subaccount endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: true,
+        data: { subaccount_code: "ACCT_123", percentage_charge: 0, settlement_bank: "GTBank" },
+      }),
+    )
+
+    global.fetch = fetchMock as unknown as typeof fetch
+
+    const subaccount = await client().getSubaccount("ACCT_123")
+
+    expect(subaccount.subaccount_code).toBe("ACCT_123")
+    expect((fetchMock.mock.calls[0] as [string])[0]).toBe("https://api.paystack.co/subaccount/ACCT_123")
+  })
+
+  it("classifies a rejected subaccount from transaction initialization", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({ status: false, message: "Invalid Subaccount." }),
+    ) as unknown as typeof fetch
+
+    const error = await client()
+      .initialize({
+        email: "buyer@example.com",
+        amount: 500000,
+        currency: "NGN",
+        reference: "acme_abc",
+        callback_url: "https://acme.example.com/checkout",
+        subaccount: "ACCT_STALE",
+        vendor_id: "vnd_123",
+        external_ref: "payses_123",
+      })
+      .catch((cause: unknown) => cause)
+
+    expect(isInvalidSubaccountError(error)).toBe(true)
   })
 })
