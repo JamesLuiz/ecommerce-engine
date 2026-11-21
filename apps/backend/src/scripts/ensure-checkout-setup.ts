@@ -46,6 +46,7 @@ import {
   FIRST_TIME_REGION,
   FIRST_TIME_SHIPPING_PRICES,
 } from "../lib/first-time-defaults"
+import { ensureRegionPaymentProviders } from "../lib/region-payment-providers"
 
 const SYSTEM_TAX_PROVIDER = "tp_system"
 const MANUAL_FULFILLMENT_PROVIDER_ID = "manual_manual"
@@ -665,38 +666,19 @@ export default async function ensureCheckoutSetup(
   }
 
   // --- Payment providers -----------------------------------------------------
-  const { data: paymentProviders } = await query.graph({
-    entity: "payment_provider",
-    fields: ["id", "is_enabled"],
-  })
+  const paymentResults = await ensureRegionPaymentProviders(container, [region])
+  const paymentResult = paymentResults[0]
 
-  const existingProviderIds = (region.payment_providers ?? [])
-    .map((provider) => provider?.id)
-    .filter((id): id is string => Boolean(id))
-  const enabledProviderIds = (
-    paymentProviders as { id?: string; is_enabled?: boolean }[]
-  )
-    .filter((provider) => provider.is_enabled && provider.id)
-    .map((provider) => provider.id as string)
-  const desiredProviderIds = Array.from(
-    new Set([...existingProviderIds, ...enabledProviderIds])
-  )
-  const sameProviders =
-    desiredProviderIds.length === existingProviderIds.length &&
-    desiredProviderIds.every((id) => existingProviderIds.includes(id))
-
-  if (!sameProviders) {
-    await updateRegionsWorkflow(container).run({
-      input: {
-        selector: { id: region.id },
-        update: { payment_providers: desiredProviderIds },
-      },
-    })
+  if (!paymentResult?.alreadyConverged) {
     logger.info(
-      `Enabled payment providers for ${regionName}: ${desiredProviderIds.join(", ")}.`
+      paymentResult?.updated
+        ? `Enabled payment providers for ${regionName}: ${paymentResult.providerIds.join(", ")}.`
+        : "Region already has all enabled payment providers."
     )
   } else {
-    logger.info("Region already has all enabled payment providers.")
+    logger.info(
+      "Region payment providers were already seeded; merchant selection preserved."
+    )
   }
 
   // --- Inventory -------------------------------------------------------------

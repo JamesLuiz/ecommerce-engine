@@ -19,11 +19,11 @@ screens have somewhere to attach their settings.
 
 New Flowcheq stores are prepared for Nigeria automatically: the region uses NGN,
 the tax region and Nigeria Warehouse are linked to the storefront sales channel,
-payment providers are enabled, and Standard and Express shipping start at
-`0.00` (free). Stock is added automatically for existing and newly listed
-products. Use the steps below to change those defaults, add other regions, or
-repair a store created before this automation. Existing settings are not
-overwritten when setup is rerun.
+both manual payment and Paystack are selected on the region, and Standard and
+Express shipping start at `0.00` (free). Stock is added automatically for
+existing and newly listed products. Use the steps below to change those
+defaults, add other regions, or repair a store created before this automation.
+Existing settings are not overwritten when setup is rerun.
 
 ## 1. Set up regions
 
@@ -140,6 +140,9 @@ Before testing checkout, confirm all of these:
 
 ## 3. Set up payments
 
+Manual payment and Paystack are selected on new regions during deployment, so no
+action is needed for the default setup. To change the methods customers can use:
+
 1. Go back to **Settings → Regions** and open your region.
 2. Use the three-dot menu and choose **Edit**.
 3. In **Payment providers**, select every provider customers may use.
@@ -152,7 +155,8 @@ No manual token copy is needed. Keep `GATEWAY_URL` and
 that vendor; `GATEWAY_TOKEN` and `GATEWAY_WEBHOOK_SECRET` are only optional
 fallbacks for imported stores. Tenants never store the Paystack master secret.
 If Paystack is installed but missing from the region, it will not appear in the
-storefront even though it exists in the admin.
+storefront even though it exists in the admin. Select it there to repair an
+older store.
 
 ## 4. Set up tax
 

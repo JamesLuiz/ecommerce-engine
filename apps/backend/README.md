@@ -35,7 +35,9 @@ step prepares a fresh store for selling immediately:
 
 Everything is editable in Admin. Rerunning setup fills missing defaults,
 reuses a valid gateway token and rotates only a stale one, but does not
-overwrite prices, stock levels, or settings a merchant has changed.
+overwrite prices, stock levels, or settings a merchant has changed. Payment
+providers are seeded once per region; after that, Admin selections are left
+alone.
 
 Set `GATEWAY_URL` and `PAYMENTS_GATEWAY_ADMIN_TOKEN` (matching the gateway's
 `ADMIN_TOKEN`) before running setup. `GATEWAY_TOKEN` is only an optional
@@ -85,5 +87,9 @@ Paystack, on the store's default region automatically.
 ## Deployment
 
 The container entrypoint runs `medusa db:migrate`, then the idempotent tenant
-bootstrap, then the server. The image, environment variables and the full
-deployment sequence are documented in the repository [README](../../README.md).
+bootstrap, then the server. `src/migration-scripts/sync-payment-providers.ts`
+runs during migrations and selects every enabled payment provider (including
+Paystack) on each region once, so a skipped or failed tenant bootstrap cannot
+leave checkout with only manual payment. The image, environment variables and
+the full deployment sequence are documented in the repository
+[README](../../README.md).
