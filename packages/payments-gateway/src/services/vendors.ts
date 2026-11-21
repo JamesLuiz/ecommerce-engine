@@ -58,6 +58,21 @@ export const findVendorById = async (id: string): Promise<Vendor | null> => {
   return toVendor(row)
 }
 
+export const findVendorBySlug = async (slug: string): Promise<Vendor | null> => {
+  const rows = (await db.unsafe<VendorRow[]>(
+    "select * from vendors where slug = $1 limit 1",
+    [slug],
+  )) as VendorRow[]
+
+  const row = rows[0]
+
+  if (!row) {
+    return null
+  }
+
+  return toVendor(row)
+}
+
 export const createVendor = async (
   input: CreateVendorInput,
 ): Promise<{

@@ -206,16 +206,18 @@ export const DEFAULT_STEPS: ProvisionStepDefinition[] = [
       let gatewayToken = await readSecretOrNull(database, tenantId, "gateway_token")
       let gatewayWebhookSecret = await readSecretOrNull(database, tenantId, "gateway_webhook_secret")
 
-      // Provision vendor in payments gateway if gateway is configured
+      // Provision vendor in payments gateway if gateway is configured. The
+      // ensure endpoint reuses a valid token and rotates only a stale one, so
+      // retries are safe and never leave a mismatch between gateway and tenant.
       const gatewayUrl = process.env.GATEWAY_URL
       const adminToken = process.env.PAYMENTS_GATEWAY_ADMIN_TOKEN || process.env.ADMIN_TOKEN
 
-      if (gatewayUrl && adminToken && (!gatewayToken || !gatewayWebhookSecret)) {
+      if (gatewayUrl && adminToken) {
         try {
           const config = parseTenantConfig(ctx)
           const { storeUrl, adminUrl } = tenantHosts(ctx.tenant.slug)
-          const webhookUrl = `${adminUrl}/hooks/payment/paystack-gateway_paystack-gateway`
-          const res = await fetch(`${gatewayUrl.replace(/\/+$/, "")}/admin/vendors`, {
+          const webhookUrl = `${adminUrl}/hooks/payment/pp_paystack-gateway_paystack-gateway`
+          const res = await fetch(`${gatewayUrl.replace(/\/+$/, "")}/admin/vendors/ensure`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${adminToken}`,
@@ -226,15 +228,21 @@ export const DEFAULT_STEPS: ProvisionStepDefinition[] = [
               name: (config as any)?.brand?.name || ctx.tenant.slug,
               webhook_url: webhookUrl,
               allowed_origins: [storeUrl, adminUrl],
+              current_token: gatewayToken || undefined,
             }),
           })
 
           if (res.ok) {
-            const data = (await res.json()) as { token: string; webhook_signing_secret: string }
+            const data = (await res.json()) as {
+              token: string
+              webhook_signing_secret: string
+            }
             gatewayToken = data.token
             gatewayWebhookSecret = data.webhook_signing_secret
-            await storeSecret(database, tenantId, "gateway_token", gatewayToken)
-            await storeSecret(database, tenantId, "gateway_webhook_secret", gatewayWebhookSecret)
+            await upsertSecret(database, tenantId, "gateway_token", gatewayToken)
+            await upsertSecret(database, tenantId, "gateway_webhook_secret", gatewayWebhookSecret)
+          } else {
+            console.warn(`Failed to register vendor on payments gateway: HTTP ${res.status}`)
           }
         } catch (err) {
           console.warn("Failed to register vendor on payments gateway:", err)

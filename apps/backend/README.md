@@ -28,10 +28,18 @@ step prepares a fresh store for selling immediately:
 - all enabled payment providers on the region, including Paystack;
 - Standard and Express flat-rate shipping options priced at `0.00` by default;
 - stock at Nigeria Warehouse for every inventory item, including products
-  listed later via the `createProductsWorkflow` hook.
+  listed later via the `createProductsWorkflow` hook;
+- a Paystack gateway vendor registered through the gateway admin API, with its
+  one-time token and webhook signing secret stored encrypted in
+  `payment_provider_config`.
 
-Everything is editable in Admin. Rerunning setup fills missing defaults but
-does not overwrite prices, stock levels, or settings a merchant has changed.
+Everything is editable in Admin. Rerunning setup fills missing defaults,
+reuses a valid gateway token and rotates only a stale one, but does not
+overwrite prices, stock levels, or settings a merchant has changed.
+
+Set `GATEWAY_URL` and `PAYMENTS_GATEWAY_ADMIN_TOKEN` (matching the gateway's
+`ADMIN_TOKEN`) before running setup. `GATEWAY_TOKEN` is only an optional
+fallback for imported stores.
 
 For an existing store, the Nigeria defaults can be applied without recreating
 the admin user:

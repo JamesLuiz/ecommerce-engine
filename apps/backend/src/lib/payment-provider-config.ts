@@ -1,4 +1,6 @@
 import type { MedusaContainer } from "@medusajs/framework/types"
+
+import { GatewayClient } from "../modules/paystack-gateway/gateway-client"
 import { VENDOR_PAYMENT_MODULE } from "../modules/vendor-payment"
 import { decryptSecret, encryptSecret, maskSecret } from "./payment-config-crypto"
 
@@ -11,6 +13,10 @@ export interface StoredPaymentProviderConfig {
   public_key: string | null
   secret_key_enc: string | null
   webhook_secret_enc: string | null
+  gateway_url: string | null
+  gateway_vendor_id: string | null
+  gateway_token_enc: string | null
+  gateway_webhook_secret_enc: string | null
   enabled: boolean
 }
 
@@ -48,10 +54,23 @@ function getBaseUrl(originOrUrl: string | undefined | null): string | null {
   }
 }
 
+function decryptMaybe(value: string | null | undefined): string {
+  if (!value) {
+    return ""
+  }
+
+  try {
+    return decryptSecret(value)
+  } catch {
+    return ""
+  }
+}
+
 export function getPaystackPrefilledLinks() {
   const backendBase =
     getBaseUrl(process.env.MEDUSA_BACKEND_URL) ||
     getBaseUrl(process.env.BACKEND_URL) ||
+    getBaseUrl(process.env.MEDUSA_ADMIN_BACKEND_URL) ||
     getBaseUrl(process.env.ADMIN_CORS) ||
     null
   const storefrontBase =
@@ -60,7 +79,7 @@ export function getPaystackPrefilledLinks() {
     null
 
   // Medusa payment webhook hook path for this provider registration
-  const webhookPath = "/hooks/payment/paystack-gateway_paystack-gateway"
+  const webhookPath = "/hooks/payment/pp_paystack-gateway_paystack-gateway"
 
   return {
     webhook_url: backendBase ? `${backendBase}${webhookPath}` : webhookPath,
@@ -84,11 +103,53 @@ export async function getStoredPaymentProviderConfig(
       public_key: config.public_key ?? null,
       secret_key_enc: config.secret_key_enc ?? null,
       webhook_secret_enc: config.webhook_secret_enc ?? null,
+      gateway_url: config.gateway_url ?? null,
+      gateway_vendor_id: config.gateway_vendor_id ?? null,
+      gateway_token_enc: config.gateway_token_enc ?? null,
+      gateway_webhook_secret_enc: config.gateway_webhook_secret_enc ?? null,
       enabled: config.enabled !== false,
     }
   } catch {
     return null
   }
+}
+
+export async function resolvePlatformGatewayConfig(
+  container: MedusaContainer | Record<string, unknown>,
+  platformDefaults?: { gatewayUrl?: string; gatewayToken?: string; webhookSecret?: string }
+): Promise<ResolvedPlatformPaystackConfig> {
+  const stored = await getStoredPaymentProviderConfig(container)
+
+  return {
+    mode: "platform",
+    gatewayUrl:
+      stored?.gateway_url ||
+      platformDefaults?.gatewayUrl ||
+      process.env.GATEWAY_URL ||
+      "",
+    gatewayToken:
+      decryptMaybe(stored?.gateway_token_enc) ||
+      platformDefaults?.gatewayToken ||
+      process.env.GATEWAY_TOKEN ||
+      "",
+    webhookSecret:
+      decryptMaybe(stored?.gateway_webhook_secret_enc) ||
+      platformDefaults?.webhookSecret ||
+      process.env.GATEWAY_WEBHOOK_SECRET ||
+      "",
+  }
+}
+
+export async function resolveGatewayClient(
+  container: MedusaContainer | Record<string, unknown>,
+  platformDefaults?: { gatewayUrl?: string; gatewayToken?: string; webhookSecret?: string }
+): Promise<GatewayClient> {
+  const config = await resolvePlatformGatewayConfig(container, platformDefaults)
+
+  return new GatewayClient({
+    gatewayUrl: config.gatewayUrl,
+    gatewayToken: config.gatewayToken,
+  })
 }
 
 export async function resolvePaystackConfig(
@@ -98,9 +159,9 @@ export async function resolvePaystackConfig(
   const stored = await getStoredPaymentProviderConfig(container)
 
   if (stored?.mode === "direct" && stored.enabled) {
-    const secretKey = stored.secret_key_enc ? decryptSecret(stored.secret_key_enc) : ""
+    const secretKey = decryptMaybe(stored.secret_key_enc)
     const publicKey = stored.public_key || ""
-    const webhookSecret = stored.webhook_secret_enc ? decryptSecret(stored.webhook_secret_enc) : ""
+    const webhookSecret = decryptMaybe(stored.webhook_secret_enc)
 
     if (secretKey && publicKey) {
       return {
@@ -112,12 +173,7 @@ export async function resolvePaystackConfig(
     }
   }
 
-  return {
-    mode: "platform",
-    gatewayUrl: platformDefaults?.gatewayUrl ?? process.env.GATEWAY_URL ?? "",
-    gatewayToken: platformDefaults?.gatewayToken ?? process.env.GATEWAY_TOKEN ?? "",
-    webhookSecret: platformDefaults?.webhookSecret ?? process.env.GATEWAY_WEBHOOK_SECRET ?? "",
-  }
+  return resolvePlatformGatewayConfig(container, platformDefaults)
 }
 
 export async function upsertPaymentProviderConfig(
@@ -162,6 +218,38 @@ export async function upsertPaymentProviderConfig(
   return saved
 }
 
+export async function upsertGatewayConfig(
+  container: MedusaContainer | Record<string, unknown>,
+  input: {
+    gatewayUrl: string
+    gatewayToken: string
+    vendorId?: string | null
+    webhookSecret?: string | null
+  }
+) {
+  const service = (container as any).resolve(VENDOR_PAYMENT_MODULE) as any
+  const existing = await service.listPaymentProviderConfigs({ provider: "paystack" }, { take: 1 })
+  const current = existing?.[0]
+
+  const update: Record<string, any> = {
+    provider: "paystack",
+    mode: current?.mode ?? "platform",
+    enabled: current?.enabled ?? true,
+    gateway_url: input.gatewayUrl,
+    gateway_vendor_id: input.vendorId ?? null,
+    gateway_token_enc: encryptSecret(input.gatewayToken),
+    gateway_webhook_secret_enc: input.webhookSecret
+      ? encryptSecret(input.webhookSecret)
+      : null,
+  }
+
+  if (current) {
+    return service.updatePaymentProviderConfigs({ id: current.id, ...update })
+  }
+
+  return service.createPaymentProviderConfigs(update)
+}
+
 export function toPublicPaymentProviderConfig(stored: StoredPaymentProviderConfig | null) {
   const links = getPaystackPrefilledLinks()
   const directReady = Boolean(
@@ -181,7 +269,12 @@ export function toPublicPaymentProviderConfig(stored: StoredPaymentProviderConfi
       ready: directReady,
     },
     platform: {
-      gateway_configured: Boolean(process.env.GATEWAY_URL && process.env.GATEWAY_TOKEN),
+      gateway_configured: Boolean(
+        (stored?.gateway_url || process.env.GATEWAY_URL) &&
+          (stored?.gateway_token_enc || process.env.GATEWAY_TOKEN)
+      ),
+      vendor_id: stored?.gateway_vendor_id ?? null,
+      token_masked: stored?.gateway_token_enc ? "****" : null,
     },
     links,
   }

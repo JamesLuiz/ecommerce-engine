@@ -1,12 +1,10 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { GatewayClient } from "../../../../modules/paystack-gateway/gateway-client"
+
+import { resolveGatewayClient } from "../../../../lib/payment-provider-config"
 import { VENDOR_PAYMENT_MODULE } from "../../../../modules/vendor-payment"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const client = new GatewayClient({
-    gatewayUrl: process.env.GATEWAY_URL ?? "",
-    gatewayToken: process.env.GATEWAY_TOKEN ?? "",
-  })
+  const client = await resolveGatewayClient(req.scope)
 
   try {
     const gatewaySettlement = await client.getSettlement()
@@ -40,10 +38,7 @@ export async function PUT(req: MedusaRequest, res: MedusaResponse) {
     (req as any).user?.email ??
     "admin"
 
-  const client = new GatewayClient({
-    gatewayUrl: process.env.GATEWAY_URL ?? "",
-    gatewayToken: process.env.GATEWAY_TOKEN ?? "",
-  })
+  const client = await resolveGatewayClient(req.scope)
 
   const saved = await client.updateSettlement(body.bank_code, body.account_number, actor)
 

@@ -27,6 +27,7 @@ import {
 } from "../lib/first-time-defaults"
 import { withDefaultRegionPolicies } from "../lib/region-store-policies"
 import ensureCheckoutSetup from "./ensure-checkout-setup"
+import ensureGatewayVendor from "./ensure-gateway-vendor"
 import ensurePublishableKey from "./ensure-publishable-key"
 
 const SYSTEM_PAYMENT_PROVIDER = "pp_system_default"
@@ -41,6 +42,7 @@ type RegionRow = {
 
 type StoreRow = {
   id: string
+  name?: string | null
   default_region_id?: string | null
   default_sales_channel_id?: string | null
   supported_currencies?: {
@@ -63,6 +65,7 @@ export default async function ensureFirstTimeStore({ container, args }: ExecArgs
     entity: "store",
     fields: [
       "id",
+      "name",
       "default_region_id",
       "default_sales_channel_id",
       "supported_currencies.currency_code",
@@ -226,6 +229,10 @@ export default async function ensureFirstTimeStore({ container, args }: ExecArgs
   ).toLowerCase()
 
   await ensurePublishableKey({ container, args }, { salesChannelId: salesChannel.id })
+
+  await ensureGatewayVendor({ container, args }, {
+    name: store.name || undefined,
+  })
 
   await ensureCheckoutSetup({ container, args }, {
     storeId: store.id,

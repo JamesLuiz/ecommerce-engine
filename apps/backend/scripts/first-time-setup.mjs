@@ -5,15 +5,18 @@
  * 1. Runs database migrations (`medusa db:migrate`)
  * 2. Prompts for admin email and password and creates the user (`medusa user`)
  * 3. Applies Nigeria/NGN first-time defaults, free 0.00 shipping, the storefront
- *    sales channel and warehouse links, and prints the publishable key token
+ *    sales channel and warehouse links, registers the Paystack gateway vendor
+ *    and stores its token, and prints the publishable key token
  *
  * Run from apps/backend (or via npm script) with DATABASE_URL and other required
- * env vars set (see .env.template).
+ * env vars set (see .env.template). Set SETUP_FIRST_SKIP_USER=true when rerunning
+ * against a database that already has an admin user.
  *
  *   npm run setup:first
  */
 
 import { spawnSync } from "node:child_process"
+import { existsSync, readFileSync } from "node:fs"
 import { createInterface } from "node:readline/promises"
 import { stdin as input, stdout as output } from "node:process"
 import path from "node:path"
@@ -42,6 +45,34 @@ function fail(message) {
   process.exit(1)
 }
 
+function readEnvFile(file) {
+  if (!existsSync(file)) {
+    return {}
+  }
+
+  const values = {}
+
+  for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
+    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/)
+
+    if (!match) {
+      continue
+    }
+
+    values[match[1]] = match[2].replace(/^["']|["']$/g, "")
+  }
+
+  return values
+}
+
+function setupEnv() {
+  const rootEnv = readEnvFile(path.resolve(backendRoot, "../.env"))
+  const backendEnv = readEnvFile(path.join(backendRoot, ".env"))
+
+  // Explicit process env wins; backend values win over the monorepo root.
+  return { ...rootEnv, ...backendEnv, ...process.env }
+}
+
 async function promptNonEmpty(rl, label) {
   while (true) {
     const value = (await rl.question(label)).trim()
@@ -55,7 +86,9 @@ async function main() {
   console.log(`[first-time-setup] Working directory: ${backendRoot}`)
   console.log("")
 
-  if (!process.env.DATABASE_URL) {
+  const env = setupEnv()
+
+  if (!env.DATABASE_URL) {
     console.warn(
       "[first-time-setup] Warning: DATABASE_URL is not set in the environment. " +
         "Migrations/user creation will fail without a valid database connection. " +
@@ -66,38 +99,42 @@ async function main() {
 
   // 1) Migrations
   console.log("[first-time-setup] Step 1/3: Running database migrations...")
-  const migrateStatus = run("npx", ["--no-install", "medusa", "db:migrate"])
+  const migrateStatus = run("npx", ["--no-install", "medusa", "db:migrate"], { env })
   if (migrateStatus !== 0) {
     fail(`Migrations failed (exit code ${migrateStatus}).`)
   }
 
-  // 2) Create admin user
+  // 2) Create admin user unless this is a resume run.
   console.log("")
-  console.log("[first-time-setup] Step 2/3: Create admin user")
-  const rl = createInterface({ input, output })
-  let email
-  let password
-  try {
-    email = await promptNonEmpty(rl, "Admin email: ")
-    password = await promptNonEmpty(rl, "Admin password: ")
-  } finally {
-    rl.close()
-  }
+  if (env.SETUP_FIRST_SKIP_USER === "true") {
+    console.log("[first-time-setup] Step 2/3: Skipping admin user creation (resume run)")
+  } else {
+    console.log("[first-time-setup] Step 2/3: Create admin user")
+    const rl = createInterface({ input, output })
+    let email
+    let password
+    try {
+      email = await promptNonEmpty(rl, "Admin email: ")
+      password = await promptNonEmpty(rl, "Admin password: ")
+    } finally {
+      rl.close()
+    }
 
-  console.log(`[first-time-setup] Creating user ${email}...`)
-  const userStatus = run("npx", [
-    "--no-install",
-    "medusa",
-    "user",
-    "-e",
-    email,
-    "-p",
-    password,
-  ])
-  if (userStatus !== 0) {
-    fail(
-      `User creation failed (exit code ${userStatus}). If the user already exists, you can rerun and continue; check the output above.`
-    )
+    console.log(`[first-time-setup] Creating user ${email}...`)
+    const userStatus = run("npx", [
+      "--no-install",
+      "medusa",
+      "user",
+      "-e",
+      email,
+      "-p",
+      password,
+    ], { env })
+    if (userStatus !== 0) {
+      fail(
+        `User creation failed (exit code ${userStatus}). If the user already exists, rerun with SETUP_FIRST_SKIP_USER=true to continue.`
+      )
+    }
   }
 
   // 3) Nigeria store defaults, checkout setup and publishable key
@@ -110,7 +147,7 @@ async function main() {
     "medusa",
     "exec",
     "./src/scripts/ensure-first-time-store.ts",
-  ])
+  ], { env })
   if (setupStatus !== 0) {
     fail(
       `Store setup failed (exit code ${setupStatus}). You can rerun just this step with: npx medusa exec ./src/scripts/ensure-first-time-store.ts`

@@ -116,6 +116,10 @@ export type CreateVendorInput = {
   allowed_origins: string[]
 }
 
+export type EnsureVendorInput = CreateVendorInput & {
+  current_token?: string
+}
+
 export type UpdateVendorInput = {
   name?: string
   webhook_url?: string

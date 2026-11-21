@@ -5,6 +5,7 @@ import { banksRouter } from "./routes/banks.js"
 import { settlementRouter } from "./routes/settlement.js"
 import { transactionsRouter } from "./routes/transactions.js"
 import { refundsRouter } from "./routes/refunds.js"
+import { vendorRouter } from "./routes/vendor.js"
 import { webhooksRouter } from "./routes/webhooks.paystack.js"
 import type { VendorEnv } from "./env.js"
 
@@ -17,6 +18,7 @@ app.route("/v1", banksRouter)
 app.route("/v1", settlementRouter)
 app.route("/v1", transactionsRouter)
 app.route("/v1", refundsRouter)
+app.route("/v1", vendorRouter)
 app.route("/webhooks", webhooksRouter)
 
 app.onError(errorHandler)

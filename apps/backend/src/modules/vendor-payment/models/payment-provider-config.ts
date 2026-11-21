@@ -7,6 +7,10 @@ export const PaymentProviderConfig = model.define("payment_provider_config", {
   public_key: model.text().nullable(),
   secret_key_enc: model.text().nullable(),
   webhook_secret_enc: model.text().nullable(),
+  gateway_url: model.text().nullable(),
+  gateway_vendor_id: model.text().nullable(),
+  gateway_token_enc: model.text().nullable(),
+  gateway_webhook_secret_enc: model.text().nullable(),
   enabled: model.boolean().default(true),
 })
 

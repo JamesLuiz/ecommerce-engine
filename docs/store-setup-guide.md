@@ -145,10 +145,14 @@ Before testing checkout, confirm all of these:
 3. In **Payment providers**, select every provider customers may use.
 4. Save.
 
-For Paystack, the provider must also be configured on the backend with
-`GATEWAY_URL`, `GATEWAY_TOKEN` and `GATEWAY_WEBHOOK_SECRET`. Tenants never store
-the Paystack secret. If Paystack is installed but missing from the region, it
-will not appear in the storefront even though it exists in the admin.
+For Paystack, first-time setup registers the store with the Flowcheq payments
+gateway and saves the returned vendor token encrypted in the tenant database.
+No manual token copy is needed. Keep `GATEWAY_URL` and
+`PAYMENTS_GATEWAY_ADMIN_TOKEN` on the backend so setup can register or refresh
+that vendor; `GATEWAY_TOKEN` and `GATEWAY_WEBHOOK_SECRET` are only optional
+fallbacks for imported stores. Tenants never store the Paystack master secret.
+If Paystack is installed but missing from the region, it will not appear in the
+storefront even though it exists in the admin.
 
 ## 4. Set up tax
 

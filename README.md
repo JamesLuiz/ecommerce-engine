@@ -374,16 +374,16 @@ https://gateway.example.com/webhooks/paystack
 
 ### 2.5 Register a vendor
 
-The provisioner registers a vendor automatically when `GATEWAY_URL` and `PAYMENTS_GATEWAY_ADMIN_TOKEN` are set in the root `.env`. For a manual deployment, call the admin route:
+No manual token copy is needed. With `GATEWAY_URL` and `PAYMENTS_GATEWAY_ADMIN_TOKEN` set in the root `.env`, `npm run setup:first --workspace=@dtc/backend` registers the store as a gateway vendor and stores the returned token encrypted in that tenant's `payment_provider_config` row. The provisioner does the same for deployed stores. Both call the idempotent admin route, which reuses a valid token and rotates only a stale one:
 
 ```bash
-curl -fsS -X POST https://gateway.example.com/admin/vendors \
+curl -fsS -X POST https://gateway.example.com/admin/vendors/ensure \
   -H "Authorization: Bearer $PAYMENTS_GATEWAY_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "slug": "acme",
     "name": "Acme",
-    "webhook_url": "https://admin-acme.example.store/hooks/payment/paystack-gateway_paystack-gateway",
+    "webhook_url": "https://admin-acme.example.store/hooks/payment/pp_paystack-gateway_paystack-gateway",
     "allowed_origins": [
       "https://acme.example.store",
       "https://admin-acme.example.store"
@@ -391,7 +391,7 @@ curl -fsS -X POST https://gateway.example.com/admin/vendors \
   }'
 ```
 
-The response contains `vendor_id`, `token` and `webhook_signing_secret`. Put the token and secret into the tenant backend as `GATEWAY_TOKEN` and `GATEWAY_WEBHOOK_SECRET`.
+The response contains `vendor_id`, `token`, `webhook_signing_secret`, and `rotated`. Setup captures the one-time token and saves it to the tenant database; `GATEWAY_TOKEN` and `GATEWAY_WEBHOOK_SECRET` remain optional env fallbacks for imported stores.
 
 ## Step 3: Migrate the control-plane database
 
@@ -782,7 +782,7 @@ docker logs --tail 100 flowcheq-gateway-worker
 
 ## Security notes
 
-- The Paystack master secret belongs only in `packages/payments-gateway/.env`. Tenant backends hold a per-vendor token and webhook secret.
+- The Paystack master secret belongs only in `packages/payments-gateway/.env`. Tenant backends hold an encrypted per-vendor token and webhook secret in their own database; `GATEWAY_TOKEN` is only an optional fallback.
 - Keep `SECRETS_ENCRYPTION_KEY` stable and backed up. Rotating it makes existing `tenant_secrets` rows unreadable.
 - Rotating `WEBHOOK_SIGNING_ROOT` invalidates every vendor's webhook signing secret.
 - Keep `ADMIN_TOKEN` and `PAYMENTS_GATEWAY_ADMIN_TOKEN` identical and secret. They can register and modify vendors.
@@ -825,7 +825,9 @@ Backend:
 
 ```bash
 cp apps/backend/.env.template apps/backend/.env
-# set DATABASE_URL, JWT_SECRET, COOKIE_SECRET, TENANT_CONFIG
+# set DATABASE_URL, JWT_SECRET, COOKIE_SECRET, TENANT_CONFIG,
+# GATEWAY_URL and PAYMENTS_GATEWAY_ADMIN_TOKEN (must match gateway ADMIN_TOKEN)
+npm run setup:first --workspace=@dtc/backend
 npm run backend:dev
 # http://localhost:9000, admin at /app
 ```
@@ -905,8 +907,7 @@ docker run -d --name acme-backend \
   -e STOREFRONT_URL='https://acme.example.store' \
   -e TENANT_CONFIG='{"slug":"acme","businessName":"Acme","ownerEmail":"owner@acme.test","plan":"starter","currency":"NGN","region":"ng","brand":{"primaryColor":"#111111"}}' \
   -e GATEWAY_URL='https://gateway.example.com' \
-  -e GATEWAY_TOKEN='replace-with-vendor-token' \
-  -e GATEWAY_WEBHOOK_SECRET='replace-with-vendor-webhook-secret' \
+  -e PAYMENTS_GATEWAY_ADMIN_TOKEN='same-as-gateway-admin-token' \
   ghcr.io/acme/flowcheq-commerce/backend:latest
 ```
 

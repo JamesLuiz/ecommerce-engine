@@ -88,8 +88,10 @@ node dist/worker.js     # no inbound traffic needed
 ```
 
 Point the Paystack dashboard webhook at `https://<gateway-host>/webhooks/paystack`.
-Never put `PAYSTACK_SECRET_KEY` in a vendor Medusa instance; vendors only hold
-the token returned by `POST /admin/vendors`.
+Never put `PAYSTACK_SECRET_KEY` in a vendor Medusa instance; setup stores only
+the vendor token returned by `POST /admin/vendors/ensure`. That endpoint is
+idempotent: it reuses a valid `current_token` and rotates only a missing or
+stale one.
 
 When `DASHBOARD_URL` and `ORDER_WEBHOOK_SECRET` are set, a successful
 `charge.success` also calls the dashboard internal endpoint
@@ -100,10 +102,12 @@ checkout payments still work; they just never trigger a deployment.
 ## Endpoints
 
 - `GET /healthz`
-- `POST /admin/vendors`, `GET /admin/vendors/:id`,
+- `POST /admin/vendors`, `POST /admin/vendors/ensure`, `GET /admin/vendors/:id`,
   `POST /admin/vendors/:id/rotate-token`, `POST /admin/vendors/:id/suspend`,
   `POST /admin/vendors/:id/activate`, `PATCH /admin/vendors/:id`
   — provisioner only (`ADMIN_TOKEN`)
+- `GET /v1/vendor` — vendor token, returns the authenticated vendor's identity
+  and webhook configuration
 - `GET /v1/banks` — vendor token, returns the Paystack bank list for the vendor's
   currency plus a `test_mode` flag
 - `POST /v1/accounts/resolve` — vendor token, resolves a bank account through
@@ -132,10 +136,10 @@ account name is taken from the subaccount response. Live mode always resolves
 first. Replace the test settlement account with a real one before switching to a
 live Paystack key.
 
-`GET /admin/vendors/:id` and `POST /admin/vendors` both return
-`webhook_signing_secret`, the HMAC secret used to sign forwarded webhooks. It is
-derived from `WEBHOOK_SIGNING_ROOT` and the vendor id, so rotating the root
-invalidates every vendor secret at once.
+`GET /admin/vendors/:id`, `POST /admin/vendors` and `POST /admin/vendors/ensure`
+all return `webhook_signing_secret`, the HMAC secret used to sign forwarded
+webhooks. It is derived from `WEBHOOK_SIGNING_ROOT` and the vendor id, so
+rotating the root invalidates every vendor secret at once.
 
 ## Reliability
 

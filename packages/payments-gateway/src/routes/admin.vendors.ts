@@ -5,11 +5,13 @@ import { webhookSecretFor } from "../services/crypto.js"
 import {
   createVendor,
   findVendorById,
+  findVendorBySlug,
+  findVendorByToken,
   rotateVendorToken,
   setVendorStatus,
   updateVendor,
 } from "../services/vendors.js"
-import type { CreateVendorInput, UpdateVendorInput } from "../types.js"
+import type { CreateVendorInput, EnsureVendorInput, UpdateVendorInput } from "../types.js"
 import type { VendorEnv } from "../env.js"
 
 export const adminVendorsRouter = new Hono<VendorEnv>()
@@ -35,6 +37,72 @@ adminVendorsRouter.post("/vendors", async (c: Context) => {
       webhook_signing_secret: created.webhookSigningSecret,
     },
     201,
+  )
+})
+
+adminVendorsRouter.post("/vendors/ensure", async (c: Context) => {
+  const input = (await c.req.json().catch(() => null)) as EnsureVendorInput | null
+
+  if (
+    !input?.slug ||
+    !input?.name ||
+    !input?.webhook_url ||
+    !Array.isArray(input.allowed_origins) ||
+    !input.allowed_origins.every((origin) => typeof origin === "string") ||
+    (input.current_token !== undefined && typeof input.current_token !== "string")
+  ) {
+    return c.json(
+      { error: { code: "validation_error", message: "Invalid vendor payload" } },
+      400,
+    )
+  }
+
+  const existing = await findVendorBySlug(input.slug)
+  let token = input.current_token?.trim() ?? ""
+  let reusedToken = false
+
+  if (existing) {
+    await updateVendor(existing.id, {
+      name: input.name,
+      webhook_url: input.webhook_url,
+      allowed_origins: input.allowed_origins,
+    })
+    await setVendorStatus(existing.id, "active")
+
+    const currentVendor = token ? await findVendorByToken(token) : null
+    reusedToken = currentVendor?.id === existing.id
+
+    if (!reusedToken) {
+      token = ""
+    }
+  } else {
+    await createVendor(input)
+    token = ""
+  }
+
+  const vendor = await findVendorBySlug(input.slug)
+
+  if (!vendor) {
+    return c.json(
+      { error: { code: "internal_error", message: "Vendor could not be resolved" } },
+      500,
+    )
+  }
+
+  if (!token) {
+    token = await rotateVendorToken(vendor.id)
+  }
+
+  return c.json(
+    {
+      vendor_id: vendor.id,
+      token,
+      webhook_signing_secret: webhookSecretFor(vendor.id),
+      allowed_origins: vendor.allowed_origins,
+      created: !existing,
+      rotated: !reusedToken,
+    },
+    existing ? 200 : 201,
   )
 })
 

@@ -5,6 +5,7 @@ import { createHmac } from "node:crypto"
 process.env.PAYSTACK_SECRET_KEY = "sk_test_mocksecret12345"
 process.env.WEBHOOK_SIGNING_ROOT = "whsec_root_secret_99999"
 process.env.REFUNDS_ENABLED = "true"
+process.env.ADMIN_TOKEN = "admin_test_token"
 
 const { mockDb, mockQueue, mockRedis } = vi.hoisted(() => ({
   mockDb: {
@@ -40,7 +41,7 @@ describe("Gateway Payments API & Webhooks", () => {
     name: "Acme Store",
     status: "active",
     token_hash: tokenHash,
-    webhook_url: "https://acme.example.com/hooks/payment/paystack-gateway_paystack-gateway",
+    webhook_url: "https://acme.example.com/hooks/payment/pp_paystack-gateway_paystack-gateway",
     allowed_origins: ["https://acme.example.com"],
     currency: "NGN",
     created_at: new Date(),
@@ -367,6 +368,105 @@ describe("Gateway Payments API & Webhooks", () => {
       expect(res.status).toBe(400)
       const body = (await res.json()) as any
       expect(body.error.code).toBe("validation_error")
+    })
+  })
+
+  describe("Vendor identity and idempotent registration", () => {
+    const ensureBody = {
+      slug: "acme",
+      name: "Acme Store",
+      webhook_url: "https://acme.example.com/hooks/payment/pp_paystack-gateway_paystack-gateway",
+      allowed_origins: ["https://acme.example.com"],
+    }
+
+    it("returns the authenticated vendor from /v1/vendor", async () => {
+      mockDb.unsafe.mockImplementation(async (query: string) => {
+        if (query.includes("select * from vendors where token_hash")) {
+          return [activeVendor]
+        }
+        return []
+      })
+
+      const res = await app.request("/v1/vendor", {
+        headers: { Authorization: `Bearer ${rawToken}` },
+      })
+
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as any
+      expect(body.slug).toBe("acme")
+      expect(body.id).toBe(vendorId)
+    })
+
+    it("reuses a valid token on /admin/vendors/ensure", async () => {
+      mockDb.unsafe.mockImplementation(async (query: string) => {
+        if (query.includes("select * from vendors where slug")) {
+          return [activeVendor]
+        }
+        if (query.includes("select * from vendors where token_hash")) {
+          return [activeVendor]
+        }
+        if (query.includes("update vendors set status")) {
+          return []
+        }
+        if (query.includes("update vendors set token_hash")) {
+          throw new Error("token must not be rotated")
+        }
+        if (query.includes("update vendors")) {
+          return [activeVendor]
+        }
+        return []
+      })
+
+      const res = await app.request("/admin/vendors/ensure", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer admin_test_token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ ...ensureBody, current_token: rawToken }),
+      })
+
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as any
+      expect(body.created).toBe(false)
+      expect(body.rotated).toBe(false)
+      expect(body.token).toBe(rawToken)
+    })
+
+    it("rotates a stale token on /admin/vendors/ensure", async () => {
+      mockDb.unsafe.mockImplementation(async (query: string) => {
+        if (query.includes("select * from vendors where slug")) {
+          return [activeVendor]
+        }
+        if (query.includes("select * from vendors where token_hash")) {
+          return []
+        }
+        if (query.includes("update vendors set status")) {
+          return []
+        }
+        if (query.includes("update vendors set token_hash")) {
+          return []
+        }
+        if (query.includes("update vendors")) {
+          return [activeVendor]
+        }
+        return []
+      })
+
+      const res = await app.request("/admin/vendors/ensure", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer admin_test_token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ ...ensureBody, current_token: "vgw_stale_token" }),
+      })
+
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as any
+      expect(body.rotated).toBe(true)
+      expect(body.token).toMatch(/^vgw_/)
+      expect(body.token).not.toBe("vgw_stale_token")
     })
   })
 })
