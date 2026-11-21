@@ -24,13 +24,12 @@ export default function CheckoutLayout({
               Back
             </span>
           </LocalizedClientLink>
-          <LocalizedClientLink
-            href="/"
-            className="txt-compact-xlarge-plus text-brand hover:text-ui-fg-base max-w-[60vw] shrink-0 truncate text-center uppercase"
+          <div
+            className="max-w-[60vw] shrink-0 truncate text-center"
             data-testid="store-link"
           >
             <StoreBrand />
-          </LocalizedClientLink>
+          </div>
           <div className="flex-1 basis-0" />
         </nav>
       </div>
