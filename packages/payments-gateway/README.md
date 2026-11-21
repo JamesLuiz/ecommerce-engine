@@ -90,8 +90,14 @@ node dist/worker.js     # no inbound traffic needed
 Point the Paystack dashboard webhook at `https://<gateway-host>/webhooks/paystack`.
 Never put `PAYSTACK_SECRET_KEY` in a vendor Medusa instance; setup stores only
 the vendor token returned by `POST /admin/vendors/ensure`. That endpoint is
-idempotent: it reuses a valid `current_token` and rotates only a missing or
-stale one.
+idempotent: it reuses a valid `current_token`, rotates only a missing or stale
+one, and merges supplied `allowed_origins` with the vendor's existing list.
+
+`POST /v1/transactions/initialize` validates the storefront `callback_url`
+origin against that list. Exact origins and wildcard subdomain patterns such as
+`https://*.example.com` are accepted. A rejected origin returns
+`invalid_callback_origin`; update it with `PATCH /admin/vendors/<vendor_id>`
+without rotating the token.
 
 When `DASHBOARD_URL` and `ORDER_WEBHOOK_SECRET` are set, a successful
 `charge.success` also calls the dashboard internal endpoint

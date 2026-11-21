@@ -230,7 +230,7 @@ export default async function ensureFirstTimeStore({ container, args }: ExecArgs
 
   await ensurePublishableKey({ container, args }, { salesChannelId: salesChannel.id })
 
-  await ensureGatewayVendor({ container, args }, {
+  await ensureGatewayVendor({ container }, {
     name: store.name || undefined,
   })
 

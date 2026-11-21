@@ -386,12 +386,15 @@ curl -fsS -X POST https://gateway.example.com/admin/vendors/ensure \
     "webhook_url": "https://admin-acme.example.store/hooks/payment/pp_paystack-gateway_paystack-gateway",
     "allowed_origins": [
       "https://acme.example.store",
-      "https://admin-acme.example.store"
+      "https://admin-acme.example.store",
+      "https://*.example.store"
     ]
   }'
 ```
 
 The response contains `vendor_id`, `token`, `webhook_signing_secret`, and `rotated`. Setup captures the one-time token and saves it to the tenant database; `GATEWAY_TOKEN` and `GATEWAY_WEBHOOK_SECRET` remain optional env fallbacks for imported stores.
+
+The storefront sends its public origin as `callback_url` when Paystack starts. The gateway accepts exact origins or wildcard subdomain patterns such as `https://*.example.store`. If a store uses a domain outside the registered list, payment sessions fail with `callback_url origin is not allowed.` Add that origin with `PATCH /admin/vendors/<vendor_id>` using `{"allowed_origins":[...]}`. This does not rotate the vendor token.
 
 ## Step 3: Migrate the control-plane database
 

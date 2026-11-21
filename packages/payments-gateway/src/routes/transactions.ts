@@ -10,6 +10,8 @@ import {
 } from "../services/transactions.js"
 import { vendorAuth } from "../middleware/vendorAuth.js"
 import { rateLimit } from "../middleware/rateLimit.js"
+import { logger } from "../logger.js"
+import { originMatches } from "../origins.js"
 import type { Transaction } from "../types.js"
 import type { VendorEnv } from "../env.js"
 
@@ -63,7 +65,16 @@ transactionsRouter.post("/transactions/initialize", async (c: Context<VendorEnv>
     )
   }
 
-  if (!vendor.allowed_origins.includes(callbackOrigin)) {
+  if (!vendor.allowed_origins.some((allowed) => originMatches(callbackOrigin, allowed))) {
+    logger.info(
+      {
+        vendor: vendor.slug,
+        callback_origin: callbackOrigin,
+        allowed_origins: vendor.allowed_origins,
+      },
+      "Rejected payment callback origin",
+    )
+
     return c.json(
       { error: { code: "invalid_callback_origin", message: "callback_url origin is not allowed." } },
       400,

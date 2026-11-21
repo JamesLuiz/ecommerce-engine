@@ -8,7 +8,7 @@
  *
  *   npx medusa exec ./src/scripts/ensure-gateway-vendor.ts
  */
-import type { ExecArgs } from "@medusajs/framework/types"
+import type { MedusaContainer } from "@medusajs/framework/types"
 import {
   ContainerRegistrationKeys,
   MedusaError,
@@ -28,6 +28,7 @@ type GatewayVendorContext = {
 type TenantIdentity = {
   slug?: string
   name?: string
+  customDomain?: string
 }
 
 type EnsureVendorResponse = {
@@ -50,6 +51,8 @@ function readTenantIdentity(): TenantIdentity {
       slug: typeof parsed.slug === "string" ? parsed.slug : undefined,
       name:
         typeof parsed.businessName === "string" ? parsed.businessName : undefined,
+      customDomain:
+        typeof parsed.customDomain === "string" ? parsed.customDomain : undefined,
     }
   } catch {
     return {}
@@ -78,11 +81,15 @@ function normalizeOrigin(value: string | undefined | null): string | null {
   return null
 }
 
-function allowedOrigins(): string[] {
+function allowedOrigins(identity: TenantIdentity = {}): string[] {
   const origins = new Set<string>()
 
   for (const value of [
+    identity.customDomain,
     process.env.STOREFRONT_URL,
+    process.env.NEXT_PUBLIC_STOREFRONT_URL,
+    process.env.STORE_URL,
+    process.env.FRONTEND_URL,
     process.env.STORE_CORS,
     process.env.ADMIN_CORS,
     process.env.MEDUSA_BACKEND_URL,
@@ -115,7 +122,7 @@ function allowedOrigins(): string[] {
 }
 
 export default async function ensureGatewayVendor(
-  { container }: ExecArgs,
+  { container }: { container: MedusaContainer },
   context: GatewayVendorContext = {}
 ) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
@@ -166,7 +173,7 @@ export default async function ensureGatewayVendor(
         slug,
         name,
         webhook_url: links.webhook_url,
-        allowed_origins: allowedOrigins(),
+        allowed_origins: allowedOrigins(identity),
         current_token: current.gatewayToken || undefined,
       }),
       signal: AbortSignal.timeout(15000),

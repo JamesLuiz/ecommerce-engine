@@ -84,6 +84,14 @@ and `GATEWAY_WEBHOOK_SECRET`. The Paystack master secret never reaches a tenant
 container. Tenant bootstrap selects every enabled payment provider, including
 Paystack, on the store's default region automatically.
 
+The storefront passes its public origin as `callback_url`. The gateway only
+accepts vendors whose `allowed_origins` includes that origin (exact or
+`https://*.example.com` wildcard). `ensure-gateway-vendor.ts` registers
+`TENANT_CONFIG.customDomain`, `STOREFRONT_URL`, `STORE_CORS` and related URLs,
+and the container entrypoint refreshes this list on boot when a gateway admin
+token is available. If payment sessions fail with `callback_url origin is not
+allowed.`, add the storefront origin to the vendor with the gateway admin API.
+
 ## Deployment
 
 The container entrypoint runs `medusa db:migrate`, then the idempotent tenant

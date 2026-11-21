@@ -92,6 +92,51 @@ export function tenantHosts(slug: string): { storeUrl: string; adminUrl: string 
   }
 }
 
+export function originFrom(value?: string | null): string | null {
+  const candidate = value?.trim()
+
+  if (!candidate) {
+    return null
+  }
+
+  if (/^https?:\/\/\*\./i.test(candidate)) {
+    return candidate.replace(/\/+$/, "")
+  }
+
+  for (const url of [candidate, `https://${candidate}`]) {
+    try {
+      return new URL(url).origin
+    } catch {
+      // Try the next form.
+    }
+  }
+
+  return null
+}
+
+/** A tenant's real storefront may be a custom domain, not the generated slug URL. */
+export function resolveStoreUrl(slug: string, config: TenantConfig): string {
+  return originFrom(config.customDomain) ?? tenantHosts(slug).storeUrl
+}
+
+/** Origins the payments gateway must accept as Paystack callback sources. */
+export function tenantAllowedOrigins(
+  slug: string,
+  config: TenantConfig,
+): string[] {
+  const hosts = tenantHosts(slug)
+  const domain = process.env.STORE_BASE_DOMAIN?.trim().replace(/^https?:\/\//, "")
+  const candidates = [
+    resolveStoreUrl(slug, config),
+    hosts.adminUrl,
+    domain ? `https://*.${domain}` : null,
+  ]
+
+  return Array.from(
+    new Set(candidates.map((candidate) => originFrom(candidate)).filter(Boolean)),
+  ) as string[]
+}
+
 function buildBackendEnv(ctx: ProvisionStepContext, tenantConfig: TenantConfig): Record<string, string> {
   const dbName = ctx.tenant.db_name ?? ctx.apps?.database
   const dbPassword = ctx.secrets?.dbPassword
@@ -112,7 +157,8 @@ function buildBackendEnv(ctx: ProvisionStepContext, tenantConfig: TenantConfig):
 
   const dbHost = process.env.TENANT_PG_HOST ?? "localhost"
   const dbPort = process.env.TENANT_PG_PORT ?? "5432"
-  const { storeUrl, adminUrl } = tenantHosts(ctx.tenant.slug)
+  const { adminUrl } = tenantHosts(ctx.tenant.slug)
+  const storeUrl = resolveStoreUrl(ctx.tenant.slug, tenantConfig)
 
   const env: Record<string, string> = {
     DATABASE_URL: `postgres://${dbName}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`,
@@ -151,7 +197,8 @@ function buildBackendEnv(ctx: ProvisionStepContext, tenantConfig: TenantConfig):
 }
 
 function buildStorefrontEnv(ctx: ProvisionStepContext, tenantConfig: TenantConfig): Record<string, string> {
-  const { storeUrl, adminUrl } = tenantHosts(ctx.tenant.slug)
+  const { adminUrl } = tenantHosts(ctx.tenant.slug)
+  const storeUrl = resolveStoreUrl(ctx.tenant.slug, tenantConfig)
 
   return {
     MEDUSA_BACKEND_URL: adminUrl,
@@ -215,7 +262,7 @@ export const DEFAULT_STEPS: ProvisionStepDefinition[] = [
       if (gatewayUrl && adminToken) {
         try {
           const config = parseTenantConfig(ctx)
-          const { storeUrl, adminUrl } = tenantHosts(ctx.tenant.slug)
+          const { adminUrl } = tenantHosts(ctx.tenant.slug)
           const webhookUrl = `${adminUrl}/hooks/payment/pp_paystack-gateway_paystack-gateway`
           const res = await fetch(`${gatewayUrl.replace(/\/+$/, "")}/admin/vendors/ensure`, {
             method: "POST",
@@ -225,9 +272,9 @@ export const DEFAULT_STEPS: ProvisionStepDefinition[] = [
             },
             body: JSON.stringify({
               slug: ctx.tenant.slug,
-              name: (config as any)?.brand?.name || ctx.tenant.slug,
+              name: config.businessName || ctx.tenant.slug,
               webhook_url: webhookUrl,
-              allowed_origins: [storeUrl, adminUrl],
+              allowed_origins: tenantAllowedOrigins(ctx.tenant.slug, config),
               current_token: gatewayToken || undefined,
             }),
           })

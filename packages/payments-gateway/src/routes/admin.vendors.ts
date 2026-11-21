@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import type { Context } from "hono"
 import { adminAuth } from "../middleware/adminAuth.js"
+import { mergeOrigins } from "../origins.js"
 import { webhookSecretFor } from "../services/crypto.js"
 import {
   createVendor,
@@ -28,7 +29,10 @@ adminVendorsRouter.post("/vendors", async (c: Context) => {
     )
   }
 
-  const created = await createVendor(input)
+  const created = await createVendor({
+    ...input,
+    allowed_origins: mergeOrigins([], input.allowed_origins),
+  })
 
   return c.json(
     {
@@ -65,7 +69,7 @@ adminVendorsRouter.post("/vendors/ensure", async (c: Context) => {
     await updateVendor(existing.id, {
       name: input.name,
       webhook_url: input.webhook_url,
-      allowed_origins: input.allowed_origins,
+      allowed_origins: mergeOrigins(existing.allowed_origins, input.allowed_origins),
     })
     await setVendorStatus(existing.id, "active")
 
@@ -171,7 +175,12 @@ adminVendorsRouter.patch("/vendors/:id", async (c: Context) => {
   const id = c.req.param("id") ?? ""
   const input = (await c.req.json().catch(() => null)) as UpdateVendorInput | null
 
-  const vendor = await updateVendor(id, input ?? {})
+  const vendor = await updateVendor(id, {
+    ...(input ?? {}),
+    ...(input?.allowed_origins
+      ? { allowed_origins: mergeOrigins([], input.allowed_origins) }
+      : {}),
+  })
 
   if (!vendor) {
     return c.json({ error: { code: "not_found", message: "Vendor not found" } }, 404)
