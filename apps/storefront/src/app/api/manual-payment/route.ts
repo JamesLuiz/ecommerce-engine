@@ -1,5 +1,5 @@
 import { sdk } from "@lib/config"
-import { getAuthHeaders, getCacheTag } from "@lib/data/cookies"
+import { getAuthHeaders, getCacheTag, removeCartId } from "@lib/data/cookies"
 import { MANUAL_PAYMENT_RECEIVED_MESSAGE } from "@lib/payment-status"
 import { revalidateTag } from "next/cache"
 import { NextRequest, NextResponse } from "next/server"
@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
       },
       cache: "no-store",
     })
+
+    // Clear through Next's cookie store as well as the response so both server
+    // components and client navigations see an empty cart immediately.
+    await removeCartId()
 
     const response = NextResponse.json({
       order_id: result.order_id,

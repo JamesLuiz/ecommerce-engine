@@ -3,7 +3,7 @@
 import { MANUAL_PAYMENT_RECEIVED_MESSAGE } from "@lib/payment-status"
 import { HttpTypes } from "@medusajs/types"
 import { Button, Input, Text } from "@modules/common/components/ui"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
 import ManualPaymentDetails from "../manual-payment-details"
@@ -29,7 +29,6 @@ const ManualPaymentButton = ({
   "data-testid": dataTestId,
 }: ManualPaymentButtonProps) => {
   const { countryCode } = useParams()
-  const router = useRouter()
   const [showUpload, setShowUpload] = useState(false)
   const [receipt, setReceipt] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -74,9 +73,14 @@ const ManualPaymentButton = ({
         message: data.message || MANUAL_PAYMENT_RECEIVED_MESSAGE,
       })
 
-      router.push(
+      // A full document navigation avoids reusing cached checkout RSC payloads
+      // that still contain the now-completed cart.
+      const confirmationUrl = new URL(
         `/${countryCode}/order/${data.order_id}/confirmed?${query.toString()}`,
+        window.location.origin,
       )
+
+      window.location.assign(confirmationUrl.toString())
     } catch {
       setErrorMessage("We couldn't submit your receipt. Please try again.")
     } finally {

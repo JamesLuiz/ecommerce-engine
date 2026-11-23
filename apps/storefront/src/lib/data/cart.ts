@@ -16,6 +16,38 @@ import {
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
 
+const CART_ALREADY_COMPLETED_MESSAGE =
+  "Your previous order is already complete. Add items to start a new cart."
+
+/**
+ * Returns the cart cookie only when it still points at an open cart. A stale
+ * completed cart can survive in cached pages after checkout; never let it be
+ * mutated or used to initialize another payment session.
+ */
+const requireOpenCartId = async () => {
+  const cartId = await getCartId()
+
+  if (!cartId) {
+    throw new Error("No existing cart found, please create one before updating")
+  }
+
+  const { cart } = await sdk.client
+    .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${cartId}`, {
+      method: "GET",
+      query: { fields: "id,completed_at" },
+      headers: { ...(await getAuthHeaders()) },
+      cache: "no-store",
+    })
+    .catch(() => ({ cart: null }))
+
+  if (!cart || cart.completed_at) {
+    await removeCartId()
+    throw new Error(CART_ALREADY_COMPLETED_MESSAGE)
+  }
+
+  return cartId
+}
+
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to retrieve.
@@ -24,7 +56,7 @@ import { getLocale } from "./locale-actions"
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, *payment_collection, *payment_collection.payment_sessions, payment_collection.payment_sessions.data"
+    "id, completed_at, *items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, *payment_collection, *payment_collection.payment_sessions, payment_collection.payment_sessions.data"
 
   if (!id) {
     return null
@@ -48,7 +80,9 @@ export async function retrieveCart(cartId?: string, fields?: string) {
       next,
       cache: "force-cache",
     })
-    .then(({ cart }: { cart: HttpTypes.StoreCart }) => cart)
+    .then(({ cart }: { cart: HttpTypes.StoreCart }) =>
+      cart.completed_at ? null : cart
+    )
     .catch(() => null)
 }
 
@@ -90,11 +124,7 @@ export async function getOrSetCart(countryCode: string) {
 }
 
 export async function updateCart(data: HttpTypes.StoreUpdateCart) {
-  const cartId = await getCartId()
-
-  if (!cartId) {
-    throw new Error("No existing cart found, please create one before updating")
-  }
+  const cartId = await requireOpenCartId()
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -168,11 +198,7 @@ export async function updateLineItem({
     throw new Error("Missing lineItem ID when updating line item")
   }
 
-  const cartId = await getCartId()
-
-  if (!cartId) {
-    throw new Error("Missing cart ID when updating line item")
-  }
+  const cartId = await requireOpenCartId()
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -195,11 +221,7 @@ export async function deleteLineItem(lineId: string) {
     throw new Error("Missing lineItem ID when deleting line item")
   }
 
-  const cartId = await getCartId()
-
-  if (!cartId) {
-    throw new Error("Missing cart ID when deleting line item")
-  }
+  const cartId = await requireOpenCartId()
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -241,6 +263,11 @@ export async function initiatePaymentSession(
   cart: HttpTypes.StoreCart,
   data: HttpTypes.StoreInitializePaymentSession
 ) {
+  if (cart.completed_at) {
+    await removeCartId()
+    throw new Error(CART_ALREADY_COMPLETED_MESSAGE)
+  }
+
   const headers = {
     ...(await getAuthHeaders()),
   }
@@ -256,11 +283,7 @@ export async function initiatePaymentSession(
 }
 
 export async function applyPromotions(codes: string[]) {
-  const cartId = await getCartId()
-
-  if (!cartId) {
-    throw new Error("No existing cart found")
-  }
+  const cartId = await requireOpenCartId()
 
   const headers = {
     ...(await getAuthHeaders()),
