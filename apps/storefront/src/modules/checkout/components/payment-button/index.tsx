@@ -10,6 +10,7 @@ import React, { useState } from "react"
 import ErrorMessage from "../error-message"
 import { getPaymentErrorMessage } from "@lib/util/payment-error"
 import AdyenPaymentButton from "./adyen-payment-button"
+import ManualPaymentButton from "./manual-payment-button"
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
@@ -48,7 +49,11 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
       )
     case isManual(paymentSession?.provider_id):
       return (
-        <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
+        <ManualPaymentButton
+          cart={cart}
+          notReady={notReady}
+          data-testid={dataTestId}
+        />
       )
     default:
       return <Button disabled>Select a payment method</Button>
@@ -165,45 +170,6 @@ const StripePaymentButton = ({
       <ErrorMessage
         error={errorMessage}
         data-testid="stripe-payment-error-message"
-      />
-    </>
-  )
-}
-
-const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
-  const [submitting, setSubmitting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
-  const onPaymentCompleted = async () => {
-    await placeOrder()
-      .catch((err) => {
-        setErrorMessage(err.message)
-      })
-      .finally(() => {
-        setSubmitting(false)
-      })
-  }
-
-  const handlePayment = () => {
-    setSubmitting(true)
-
-    onPaymentCompleted()
-  }
-
-  return (
-    <>
-      <Button
-        disabled={notReady}
-        isLoading={submitting}
-        onClick={handlePayment}
-        size="large"
-        data-testid="submit-order-button"
-      >
-        Place order
-      </Button>
-      <ErrorMessage
-        error={errorMessage}
-        data-testid="manual-payment-error-message"
       />
     </>
   )

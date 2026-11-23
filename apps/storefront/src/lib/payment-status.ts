@@ -2,6 +2,7 @@ export const PAYMENT_SUCCESS_MESSAGE =
   "Your order has been successfully placed."
 export const PAYMENT_FAILED_MESSAGE =
   "We couldn't confirm your payment. Please try again or choose another payment method."
+export const MANUAL_PAYMENT_RECEIVED_MESSAGE = "We've received your order."
 
 export type PaymentStatusQuery = {
   payment?: string | string[]

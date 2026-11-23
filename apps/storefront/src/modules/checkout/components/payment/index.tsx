@@ -1,9 +1,15 @@
 "use client"
 import { RadioGroup } from "@headlessui/react"
-import { getPaymentInfo, isPaystackGateway, isStripeLike } from "@lib/constants"
+import {
+  getPaymentInfo,
+  isManual,
+  isPaystackGateway,
+  isStripeLike,
+} from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import ErrorMessage from "@modules/checkout/components/error-message"
+import ManualPaymentDetails from "@modules/checkout/components/manual-payment-details"
 import PaymentContainer, {
   StripePaymentContainer,
 } from "@modules/checkout/components/payment-container"
@@ -218,6 +224,8 @@ const Payment = ({
                   </div>
                 ))}
               </RadioGroup>
+
+              {isManual(selectedPaymentMethod) && <ManualPaymentDetails />}
             </>
           )}
 

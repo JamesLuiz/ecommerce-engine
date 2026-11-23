@@ -47,6 +47,34 @@ type Settlement = {
   verified_at: string
 }
 
+type ManualAccount = {
+  id: string
+  bank_code: string
+  bank_name: string
+  account_name: string
+  account_number: string
+  account_number_last4: string
+  enabled: boolean
+  verified_at: string
+}
+
+type ManualPayment = {
+  id: string
+  cart_id: string
+  order_id: string | null
+  amount: number
+  currency_code: string
+  customer_email: string
+  bank_name: string
+  account_name: string
+  account_number_last4: string
+  receipt_filename: string
+  status: "pending_review" | "reconciled" | "rejected"
+  reconciliation_note: string | null
+  reconciled_at: string | null
+  created_at: string
+}
+
 type PaymentConfig = {
   provider: "paystack"
   mode: "platform" | "direct"
@@ -176,6 +204,20 @@ const PaymentsPage = () => {
   const [testMode, setTestMode] = useState<boolean | null>(null)
   const resolveRequestId = useRef(0)
 
+  // Manual settlement state
+  const [manualAccount, setManualAccount] = useState<ManualAccount | null>(null)
+  const [manualBankSearch, setManualBankSearch] = useState("")
+  const [manualBankCode, setManualBankCode] = useState("")
+  const [manualAccountNumber, setManualAccountNumber] = useState("")
+  const [manualResolvedAccountName, setManualResolvedAccountName] = useState("")
+  const [manualResolveError, setManualResolveError] = useState("")
+  const [manualIsResolving, setManualIsResolving] = useState(false)
+  const [manualIsSaving, setManualIsSaving] = useState(false)
+  const manualResolveRequestId = useRef(0)
+  const [manualPayments, setManualPayments] = useState<ManualPayment[]>([])
+  const [isLoadingManual, setIsLoadingManual] = useState(false)
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
+
   const bankOptions = useMemo(() => {
     const unique = Array.from(new Map(banks.map((bank): [string, Bank] => [bank.code, bank])).values())
     const query = bankSearch.trim().toLowerCase()
@@ -184,6 +226,15 @@ const PaymentsPage = () => {
       (bank) => bank.name.toLowerCase().includes(query) || bank.code.toLowerCase().includes(query)
     )
   }, [banks, bankSearch])
+
+  const manualBankOptions = useMemo(() => {
+    const unique = Array.from(new Map(banks.map((bank): [string, Bank] => [bank.code, bank])).values())
+    const query = manualBankSearch.trim().toLowerCase()
+    if (!query) return unique
+    return unique.filter(
+      (bank) => bank.name.toLowerCase().includes(query) || bank.code.toLowerCase().includes(query)
+    )
+  }, [banks, manualBankSearch])
 
   const fetchPaymentConfig = async () => {
     setIsLoadingConfig(true)
@@ -340,8 +391,42 @@ const PaymentsPage = () => {
   }
 
   useEffect(() => {
-    if (activeTab === "settlement") {
+    if (activeTab === "settlement" || activeTab === "manual") {
       void fetchSettlementData()
+    }
+  }, [activeTab])
+
+  const fetchManualData = async () => {
+    setIsLoadingManual(true)
+    try {
+      const [accountRes, paymentsRes] = await Promise.all([
+        fetch("/admin/payment/manual-account", { credentials: "same-origin" }),
+        fetch("/admin/payment/manual-payments", { credentials: "same-origin" }),
+      ])
+
+      if (accountRes.ok) {
+        const data = (await accountRes.json()) as { account: ManualAccount | null }
+        setManualAccount(data.account)
+      } else {
+        toast.error(await readErrorMessage(accountRes, "Failed to load manual settlement account"))
+      }
+
+      if (paymentsRes.ok) {
+        const data = (await paymentsRes.json()) as { payments: ManualPayment[] }
+        setManualPayments(data.payments || [])
+      } else {
+        toast.error(await readErrorMessage(paymentsRes, "Failed to load manual payments"))
+      }
+    } catch {
+      toast.error("Failed to load manual settlement details")
+    } finally {
+      setIsLoadingManual(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "manual") {
+      void fetchManualData()
     }
   }, [activeTab])
 
@@ -395,6 +480,108 @@ const PaymentsPage = () => {
     }
   }
 
+  useEffect(() => {
+    setManualResolveError("")
+    if (manualAccountNumber.length === 10 && manualBankCode) {
+      void handleManualResolve(manualBankCode, manualAccountNumber)
+    } else {
+      manualResolveRequestId.current += 1
+      setManualResolvedAccountName("")
+      setManualIsResolving(false)
+    }
+  }, [manualAccountNumber, manualBankCode])
+
+  const handleManualResolve = async (bankCode: string, accNum: string) => {
+    const requestId = ++manualResolveRequestId.current
+    setManualIsResolving(true)
+    try {
+      const res = await fetch("/admin/payment/resolve-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ bank_code: bankCode, account_number: accNum }),
+      })
+
+      if (requestId !== manualResolveRequestId.current) return
+
+      if (res.ok) {
+        const data = (await res.json()) as { account_name: string }
+        setManualResolvedAccountName(data.account_name)
+        setManualResolveError("")
+      } else {
+        setManualResolvedAccountName("")
+        setManualResolveError(await readErrorMessage(res, "Could not verify account details with bank"))
+      }
+    } catch {
+      if (requestId === manualResolveRequestId.current) {
+        setManualResolvedAccountName("")
+        setManualResolveError("Account verification failed")
+      }
+    } finally {
+      if (requestId === manualResolveRequestId.current) {
+        setManualIsResolving(false)
+      }
+    }
+  }
+
+  const handleSaveManualAccount = async () => {
+    setManualIsSaving(true)
+    try {
+      const res = await fetch("/admin/payment/manual-account", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          bank_code: manualBankCode,
+          account_number: manualAccountNumber,
+        }),
+      })
+
+      if (!res.ok) {
+        toast.error(await readErrorMessage(res, "Failed to save manual settlement account"))
+        return
+      }
+
+      const data = (await res.json()) as { account: ManualAccount }
+      setManualAccount(data.account)
+      setManualAccountNumber("")
+      setManualResolvedAccountName("")
+      setManualBankSearch("")
+      toast.success("Manual settlement account saved")
+    } catch {
+      toast.error("Failed to save manual settlement account")
+    } finally {
+      setManualIsSaving(false)
+    }
+  }
+
+  const handleUpdateManualPayment = async (id: string, status: "reconciled" | "rejected") => {
+    setUpdatingPaymentId(id)
+    try {
+      const res = await fetch(`/admin/payment/manual-payments/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ status }),
+      })
+
+      if (!res.ok) {
+        toast.error(await readErrorMessage(res, "Failed to update manual payment"))
+        return
+      }
+
+      const data = (await res.json()) as { payment: ManualPayment }
+      setManualPayments((current) =>
+        current.map((payment) => (payment.id === id ? data.payment : payment)),
+      )
+      toast.success(`Manual payment marked ${status}`)
+    } catch {
+      toast.error("Failed to update manual payment")
+    } finally {
+      setUpdatingPaymentId(null)
+    }
+  }
+
   const handleSaveSettlement = async () => {
     setIsSavingSettlement(true)
     try {
@@ -445,6 +632,12 @@ const PaymentsPage = () => {
 
   const isDirectMode = (paymentConfig?.mode ?? mode) === "direct"
 
+  const manualStatusColor = (status: ManualPayment["status"]): "green" | "red" | "orange" => {
+    if (status === "reconciled") return "green"
+    if (status === "rejected") return "red"
+    return "orange"
+  }
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px" }}>
       <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -456,11 +649,21 @@ const PaymentsPage = () => {
         </div>
       </div>
 
+      <div className="mb-5 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
+        <Text size="small" className="text-ui-fg-base">
+          <span className="font-medium">Settlement timing:</span> payments received through the
+          Paystack gateway or your own Paystack account can take up to 24 hours to settle. When you
+          configure a manual account, customers pay that account directly and you reconcile each
+          receipt here before making delivery.
+        </Text>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <Tabs.List>
           <Tabs.Trigger value="configuration">Configuration</Tabs.Trigger>
           <Tabs.Trigger value="transactions">Transactions</Tabs.Trigger>
           <Tabs.Trigger value="settlement">Settlement</Tabs.Trigger>
+          <Tabs.Trigger value="manual">Manual settlement</Tabs.Trigger>
         </Tabs.List>
 
         <Tabs.Content value="configuration" style={{ marginTop: 20 }}>
@@ -905,6 +1108,191 @@ const PaymentsPage = () => {
               )}
             </>
           )}
+        </Tabs.Content>
+
+        {/* MANUAL SETTLEMENT TAB */}
+        <Tabs.Content value="manual" style={{ marginTop: 20 }}>
+          <div className="mb-5 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-4">
+            <Text size="small" className="text-ui-fg-base">
+              <span className="font-medium">Receive payment directly:</span> customers who choose
+              manual payment transfer funds straight into this bank account. Uploaded receipts are
+              listed below so you can confirm each payment before delivery.
+            </Text>
+          </div>
+
+          {manualAccount && (
+            <Container style={{ padding: 24, marginBottom: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <Text size="small" className="text-ui-fg-subtle">Active Manual Account</Text>
+                  <Heading level="h2" style={{ marginTop: 4 }}>{manualAccount.bank_name}</Heading>
+                  <Text style={{ marginTop: 4, fontWeight: 500 }}>{manualAccount.account_name}</Text>
+                  <Text size="small" className="text-ui-fg-subtle" style={{ marginTop: 8 }}>
+                    Verified on {formatDate(manualAccount.verified_at)}
+                  </Text>
+                </div>
+                <Badge color="green">Direct payments</Badge>
+              </div>
+              <div style={{ maxWidth: 360, marginTop: 16 }}>
+                <CopyField label="Account number" value={manualAccount.account_number} />
+              </div>
+            </Container>
+          )}
+
+          <Container style={{ padding: 24 }}>
+            <Heading level="h2" style={{ marginBottom: 8 }}>
+              {manualAccount ? "Change Manual Account" : "Add Manual Settlement Account"}
+            </Heading>
+            <Text size="small" className="text-ui-fg-subtle" style={{ marginBottom: 20 }}>
+              Verify a personal bank account with Paystack and show it to customers at checkout.
+              This account is separate from Paystack payout settlement.
+            </Text>
+
+            <div style={{ display: "grid", gap: 16, maxWidth: 480 }}>
+              <div>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>Bank</label>
+                <Input
+                  placeholder="Search banks..."
+                  value={manualBankSearch}
+                  onChange={(e) => setManualBankSearch(e.target.value)}
+                  style={{ marginBottom: 8 }}
+                />
+                <Select value={manualBankCode} onValueChange={(val) => {
+                  setManualBankCode(val)
+                  setManualResolvedAccountName("")
+                  setManualBankSearch("")
+                }}>
+                  <Select.Trigger>
+                    <Select.Value placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"} />
+                  </Select.Trigger>
+                  <Select.Content>
+                    {manualBankOptions.map((b) => (
+                      <Select.Item key={b.code} value={b.code}>{b.name}</Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>10-Digit Account Number</label>
+                <Input
+                  maxLength={10}
+                  placeholder="0123456789"
+                  value={manualAccountNumber}
+                  onChange={(e) => setManualAccountNumber(e.target.value.replace(/\D/g, ""))}
+                />
+              </div>
+
+              {manualIsResolving && <Text size="small" className="text-ui-fg-subtle">Verifying account with bank...</Text>}
+
+              {manualResolveError && (
+                <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-4 py-3">
+                  <Text size="small" className="text-ui-fg-error">{manualResolveError}</Text>
+                </div>
+              )}
+
+              {manualResolvedAccountName && (
+                <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-4 py-3">
+                  <Text size="small" className="text-ui-fg-subtle">Account Holder Name</Text>
+                  <Text size="small" weight="plus" className="text-ui-fg-base">{manualResolvedAccountName}</Text>
+                </div>
+              )}
+
+              <div style={{ marginTop: 12 }}>
+                <Button
+                  disabled={!manualResolvedAccountName || manualIsResolving || manualIsSaving}
+                  onClick={() => void handleSaveManualAccount()}
+                >
+                  {manualIsSaving ? "Saving..." : "Verify & Save Manual Account"}
+                </Button>
+              </div>
+            </div>
+          </Container>
+
+          <Heading level="h2" style={{ marginTop: 32, marginBottom: 12 }}>
+            Manual payment receipts
+          </Heading>
+
+          <Container style={{ padding: 0, overflow: "hidden" }}>
+            <Table>
+              <Table.Header>
+                <Table.Row>
+                  <Table.HeaderCell>Date</Table.HeaderCell>
+                  <Table.HeaderCell>Customer</Table.HeaderCell>
+                  <Table.HeaderCell>Amount</Table.HeaderCell>
+                  <Table.HeaderCell>Account</Table.HeaderCell>
+                  <Table.HeaderCell>Receipt</Table.HeaderCell>
+                  <Table.HeaderCell>Status</Table.HeaderCell>
+                  <Table.HeaderCell>Action</Table.HeaderCell>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {manualPayments.length === 0 ? (
+                  <Table.Row>
+                    <Table.Cell colSpan={7} style={{ textAlign: "center", padding: 32 }}>
+                      <Text className="text-ui-fg-subtle">
+                        {isLoadingManual ? "Loading manual payments..." : "No manual receipts submitted yet."}
+                      </Text>
+                    </Table.Cell>
+                  </Table.Row>
+                ) : (
+                  manualPayments.map((payment) => (
+                    <Table.Row key={payment.id}>
+                      <Table.Cell>{formatDate(payment.created_at)}</Table.Cell>
+                      <Table.Cell>{payment.customer_email || "-"}</Table.Cell>
+                      <Table.Cell style={{ fontWeight: 500 }}>
+                        {formatMoney(payment.amount, payment.currency_code)}
+                      </Table.Cell>
+                      <Table.Cell>
+                        <Text size="small">{payment.bank_name}</Text>
+                        <Text size="small" className="text-ui-fg-subtle">
+                          •••• {payment.account_number_last4}
+                        </Text>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <a
+                          href={`/admin/payment/manual-payments/${encodeURIComponent(payment.id)}/receipt`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-ui-fg-interactive"
+                        >
+                          View receipt
+                        </a>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <StatusBadge color={manualStatusColor(payment.status)}>{payment.status}</StatusBadge>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {payment.status === "pending_review" ? (
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <Button
+                              size="small"
+                              disabled={updatingPaymentId === payment.id}
+                              onClick={() => void handleUpdateManualPayment(payment.id, "reconciled")}
+                            >
+                              Reconcile
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="danger"
+                              disabled={updatingPaymentId === payment.id}
+                              onClick={() => void handleUpdateManualPayment(payment.id, "rejected")}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <Text size="small" className="text-ui-fg-subtle">
+                            {formatDate(payment.reconciled_at)}
+                          </Text>
+                        )}
+                      </Table.Cell>
+                    </Table.Row>
+                  ))
+                )}
+              </Table.Body>
+            </Table>
+          </Container>
         </Tabs.Content>
       </Tabs>
 
