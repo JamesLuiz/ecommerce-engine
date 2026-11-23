@@ -10,7 +10,10 @@ export const ManualPayment = model.define("manual_payment", {
   bank_name: model.text(),
   account_name: model.text(),
   account_number_last4: model.text(),
-  receipt_file_id: model.text(),
+  // Legacy local-file key. New receipts are stored encrypted in the row so
+  // tenants do not depend on writable container storage for reconciliation.
+  receipt_file_id: model.text().nullable(),
+  receipt_content_enc: model.text().nullable(),
   receipt_filename: model.text(),
   receipt_mime_type: model.text(),
   status: model.enum(["pending_review", "reconciled", "rejected"]).default("pending_review"),

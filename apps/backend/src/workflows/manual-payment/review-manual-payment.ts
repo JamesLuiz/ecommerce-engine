@@ -14,7 +14,9 @@ const reviewManualPaymentStep = createStep(
   async (input: ReviewManualPaymentInput, { container }) => {
     const vendorPaymentService = container.resolve(VENDOR_PAYMENT_MODULE)
     const previous = await vendorPaymentService
-      .retrieveManualPayment(input.id)
+      .retrieveManualPayment(input.id, {
+        select: ["id", "status", "reconciled_at", "reconciliation_note"],
+      })
       .catch(() => null)
 
     if (!previous) {

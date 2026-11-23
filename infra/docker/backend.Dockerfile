@@ -49,7 +49,8 @@ COPY --chown=medusa:nodejs --from=builder /app/packages/tenant-config ./packages
 COPY --chown=medusa:nodejs --from=builder /app/packages/storefront-config ./packages/storefront-config
 COPY --chown=medusa:nodejs infra/docker/backend-entrypoint.sh ./backend-entrypoint.sh
 
-RUN chmod +x ./backend-entrypoint.sh
+RUN chmod +x ./backend-entrypoint.sh \
+  && chown medusa:nodejs /app
 
 USER medusa
 EXPOSE 9000

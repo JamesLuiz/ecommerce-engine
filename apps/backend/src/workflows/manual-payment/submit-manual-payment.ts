@@ -1,4 +1,4 @@
-import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import {
   createStep,
   createWorkflow,
@@ -9,6 +9,7 @@ import {
 } from "@medusajs/framework/workflows-sdk"
 import { completeCartWorkflow } from "@medusajs/medusa/core-flows"
 
+import { encryptSecret } from "../../lib/payment-config-crypto"
 import {
   getStoredManualSettlementAccount,
   MANUAL_PAYMENT_PROVIDER_ID,
@@ -101,7 +102,7 @@ const validateManualCartStep = createStep(
     const vendorPaymentService = container.resolve(VENDOR_PAYMENT_MODULE)
     const [existing] = await vendorPaymentService.listManualPayments(
       { cart_id: input.cart_id },
-      { take: 1 },
+      { take: 1, select: ["id", "order_id", "status"] },
     )
 
     return new StepResponse({
@@ -133,9 +134,9 @@ const loadManualAccountStep = createStep(
   },
 )
 
-const uploadManualReceiptStep = createStep(
-  "upload-manual-receipt",
-  async (input: { receipt: ManualReceiptInput }, { container }) => {
+const validateManualReceiptStep = createStep(
+  "validate-manual-receipt",
+  async (input: { receipt: ManualReceiptInput }) => {
     const { receipt } = input
 
     if (!ALLOWED_RECEIPT_MIME_TYPES.has(receipt.mimeType)) {
@@ -152,30 +153,14 @@ const uploadManualReceiptStep = createStep(
       )
     }
 
-    const fileModule = container.resolve(Modules.FILE)
-    const uploaded = await fileModule.createFiles({
-      filename: receipt.filename,
-      mimeType: receipt.mimeType,
-      content: receipt.content,
-      access: "private",
-    })
-
-    return new StepResponse(
-      {
-        fileId: uploaded.id,
-        filename: receipt.filename,
-        mimeType: receipt.mimeType,
-      },
-      uploaded.id,
-    )
-  },
-  async (fileId, { container }) => {
-    if (!fileId) {
-      return
+    if (!receipt.content) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "The uploaded receipt was empty.",
+      )
     }
 
-    const fileModule = container.resolve(Modules.FILE)
-    await fileModule.deleteFiles(fileId)
+    return new StepResponse(receipt)
   },
 )
 
@@ -186,11 +171,7 @@ type CreateManualPaymentInput = {
     account_name: string
     account_number_last4: string
   }
-  uploaded: {
-    fileId: string
-    filename: string
-    mimeType: string
-  }
+  receipt: ManualReceiptInput
   order_id: string
 }
 
@@ -207,9 +188,9 @@ const createManualPaymentStep = createStep(
       bank_name: input.account.bank_name,
       account_name: input.account.account_name,
       account_number_last4: input.account.account_number_last4,
-      receipt_file_id: input.uploaded.fileId,
-      receipt_filename: input.uploaded.filename,
-      receipt_mime_type: input.uploaded.mimeType,
+      receipt_content_enc: encryptSecret(input.receipt.content),
+      receipt_filename: input.receipt.filename,
+      receipt_mime_type: input.receipt.mimeType,
       status: "pending_review",
     })
 
@@ -249,15 +230,15 @@ export const submitManualPaymentWorkflow = createWorkflow(
       { existingPayment },
       ({ existingPayment }) => !existingPayment,
     ).then(() => {
-      const uploaded = uploadManualReceiptStep({ receipt: input.receipt })
+      const receipt = validateManualReceiptStep({ receipt: input.receipt })
       const order = completeCartWorkflow.runAsStep({ input: { id: cartId } })
       const orderId = transform({ order }, ({ order }) => order.id)
       const paymentInput = transform(
-        { cart, account, uploaded, orderId },
-        ({ cart, account, uploaded, orderId }) => ({
+        { cart, account, receipt, orderId },
+        ({ cart, account, receipt, orderId }) => ({
           cart,
           account,
-          uploaded,
+          receipt,
           order_id: orderId,
         }),
       )
