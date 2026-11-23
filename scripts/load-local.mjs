@@ -110,10 +110,12 @@ async function main() {
  try {
  await client.query(
  `INSERT INTO plans (id, name, price_minor, currency, "interval")
- VALUES ('starter', 'Starter setup', 15490000, 'NGN', 'yearly')
- ON CONFLICT (id) DO UPDATE SET price_minor = EXCLUDED.price_minor, currency = EXCLUDED.currency, "interval" = EXCLUDED."interval"`
+ VALUES
+    ('starter-6m', 'Starter setup - 6 months', 9580000, 'NGN', 'six-months'),
+    ('starter', 'Starter setup - yearly', 15490000, 'NGN', 'yearly')
+ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, price_minor = EXCLUDED.price_minor, currency = EXCLUDED.currency, "interval" = EXCLUDED."interval"`
  )
- console.log("load-local: ensured starter plan")
+ console.log("load-local: ensured starter-6m and starter plans")
 
  const customerEmail = args["customer-email"] ?? "demo@example.com"
  const customerName = args["customer-name"] ?? "Demo Customer"

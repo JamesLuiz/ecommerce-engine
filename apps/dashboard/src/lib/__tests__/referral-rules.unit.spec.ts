@@ -5,6 +5,7 @@ import {
   enrollmentSchema,
   formatNaira,
   periodStarts,
+  referralBonusMinorForPlan,
   referralCodeSchema,
   settlementRequestSchema,
 } from "../referral-rules"
@@ -63,8 +64,15 @@ describe("referral rules", () => {
     expect(starts.year.toISOString()).toBe("2026-01-01T00:00:00.000Z")
   })
 
-  it("formats the NGN 18,000 bonus in whole naira", () => {
+  it("formats the yearly bonus in whole naira", () => {
     expect(REFERRAL_BONUS_MINOR).toBe(1_800_000)
     expect(formatNaira(REFERRAL_BONUS_MINOR)).toContain("18,000")
+  })
+
+  it("uses plan-specific referral bonuses", () => {
+    expect(referralBonusMinorForPlan("starter-6m")).toBe(900_000)
+    expect(referralBonusMinorForPlan("starter")).toBe(1_800_000)
+    expect(referralBonusMinorForPlan("legacy-plan")).toBe(REFERRAL_BONUS_MINOR)
+    expect(formatNaira(referralBonusMinorForPlan("starter-6m"))).toContain("9,000")
   })
 })

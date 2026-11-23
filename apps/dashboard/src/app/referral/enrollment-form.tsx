@@ -4,7 +4,11 @@ import Link from "next/link"
 import { useState } from "react"
 
 import { CopyLinkButton } from "../_components/copy-link-button"
-import { formatNaira, REFERRAL_BONUS_MINOR } from "@lib/referral-rules"
+import { formatNaira } from "@lib/referral-rules"
+import { SIX_MONTH_PLAN, YEARLY_PLAN } from "@lib/sales-plans"
+
+const sixMonthBonus = formatNaira(SIX_MONTH_PLAN.referralBonusMinor)
+const yearlyBonus = formatNaira(YEARLY_PLAN.referralBonusMinor)
 
 interface EnrollResponse {
   ok?: boolean
@@ -68,7 +72,9 @@ export function ReferralEnrollmentForm() {
         </h1>
         <p className="mt-4 text-base leading-7 text-neutral-600">
           Share the link below. When someone opens it and buys a store, you earn{" "}
-          <strong className="font-semibold text-neutral-900">{formatNaira(REFERRAL_BONUS_MINOR)}</strong>.
+          <strong className="font-semibold text-neutral-900">{sixMonthBonus}</strong> for a 6-month
+          purchase or <strong className="font-semibold text-neutral-900">{yearlyBonus}</strong> for a
+          yearly purchase.
         </p>
 
         <div className="mt-7 grid gap-4">
@@ -114,8 +120,8 @@ export function ReferralEnrollmentForm() {
         </p>
         <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">Generate your referral program</h2>
         <p className="mt-4 max-w-xl text-base leading-7 text-neutral-600">
-          Create your unique referral link and start earning {formatNaira(REFERRAL_BONUS_MINOR)} for every
-          successful store purchase made through it.
+          Create your unique referral link and start earning {sixMonthBonus} for every 6-month store or{" "}
+          {yearlyBonus} for every yearly store bought through it.
         </p>
         <button
           type="button"
@@ -236,7 +242,7 @@ export function ReferralEnrollmentForm() {
           </button>
           <p className="mt-4 text-xs leading-5 text-neutral-500">
             Your account number is encrypted at rest and is only shown to staff processing payouts.
-            Each successful referred store purchase earns {formatNaira(REFERRAL_BONUS_MINOR)}.
+            Each 6-month purchase earns {sixMonthBonus}; each yearly purchase earns {yearlyBonus}.
           </p>
         </div>
       </div>

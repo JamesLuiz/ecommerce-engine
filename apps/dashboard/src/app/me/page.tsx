@@ -3,7 +3,8 @@ import Link from "next/link"
 
 import { CopyLinkButton } from "../_components/copy-link-button"
 import { findReferralByAccessToken, getReferralDashboard } from "@lib/referral"
-import { formatNaira, REFERRAL_BONUS_MINOR } from "@lib/referral-rules"
+import { formatNaira } from "@lib/referral-rules"
+import { SIX_MONTH_PLAN, YEARLY_PLAN } from "@lib/sales-plans"
 
 export const metadata: Metadata = {
   title: "My referrals | Flowcheq Commerce",
@@ -127,7 +128,8 @@ export default async function MyReferralsPage(props: {
             <div>
               <h2 className="text-lg font-semibold tracking-[-0.03em]">Recent referrals</h2>
               <p className="mt-1 text-sm text-neutral-500">
-                Each successful purchase adds a {formatNaira(REFERRAL_BONUS_MINOR)} bonus.
+                Each 6-month purchase adds {formatNaira(SIX_MONTH_PLAN.referralBonusMinor)}; each yearly
+                purchase adds {formatNaira(YEARLY_PLAN.referralBonusMinor)}.
               </p>
             </div>
             {dashboard.settlements.length > 0 ? (

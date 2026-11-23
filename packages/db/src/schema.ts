@@ -115,8 +115,9 @@ export const referral_settlements = pgTable(
 )
 
 /**
- * One NGN 18,000 credit per successful referred plan order. The unique order
- * constraint makes repeated payment webhooks harmless.
+ * One plan-specific NGN credit per successful referred order: NGN 9,000 for the
+ * 6-month plan and NGN 18,000 for the yearly plan. The unique order constraint
+ * makes repeated payment webhooks harmless.
  */
 export const referral_earnings = pgTable(
   "referral_earnings",

@@ -1,8 +1,14 @@
 import { z } from "zod"
 
-/** NGN 18,000 expressed in kobo. */
-export const REFERRAL_BONUS_MINOR = 1_800_000
+import { getSalesPlan, YEARLY_PLAN } from "./sales-plans"
+
+/** Default earning for legacy orders whose plan is not in the sales catalog. */
+export const REFERRAL_BONUS_MINOR = YEARLY_PLAN.referralBonusMinor
 export const REFERRAL_CURRENCY = "NGN"
+
+export function referralBonusMinorForPlan(planId: string | null | undefined): number {
+  return getSalesPlan(planId)?.referralBonusMinor ?? REFERRAL_BONUS_MINOR
+}
 
 /** Set by middleware when a visitor opens /?ref=CODE. */
 export const REFERRAL_COOKIE = "flowcheq_referral"

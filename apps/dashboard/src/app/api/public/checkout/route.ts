@@ -10,6 +10,12 @@ import { TenantConfig } from "@flowcheq/tenant-config"
 import { recordAudit } from "@lib/audit"
 import { db } from "@lib/db"
 import { getStoredReferralCode, resolveReferralForCheckout } from "@lib/referral"
+import {
+  DEFAULT_SALES_PLAN,
+  getSalesPlan,
+  SALES_PLAN_IDS,
+  type SalesPlan,
+} from "@lib/sales-plans"
 
 export const dynamic = "force-dynamic"
 
@@ -18,7 +24,7 @@ const CheckoutBody = z.object({
   email: z.string().email(),
   businessName: z.string().trim().min(2).max(80),
   slug: z.string().trim().min(3).max(32).optional(),
-  planId: z.string().min(1).max(64).optional(),
+  planId: z.enum(SALES_PLAN_IDS).optional(),
   currency: z.string().length(3).optional(),
   region: z.enum(["ng", "us", "eu"]).optional(),
   referralCode: z.string().trim().max(16).optional(),
@@ -36,41 +42,43 @@ function randomReference() {
   return `fc_${Date.now().toString(36)}_${randomBytes(4).toString("hex")}`
 }
 
-async function ensurePlan(planId: string, currency: string) {
-  // Current price: NGN 154,900/yr = 15,490,000 kobo. Existing installs may
-  // already have a `starter` row at the old price, so sync it on the way
-  // through instead of only seeding fresh databases.
-  const defaults: Record<string, { name: string; price_minor: number; currency: string; interval: string }> = {
-    starter: { name: "Starter setup", price_minor: 15490000, currency: "NGN", interval: "yearly" },
-  }
-  const plan = defaults[planId] ?? {
-    name: planId,
-    price_minor: 15490000,
-    currency,
-    interval: "yearly",
+async function ensurePlan(plan: SalesPlan) {
+  // Existing installs may have plan rows with old prices or intervals, so sync
+  // the catalog values on the way through instead of only seeding new databases.
+  const values = {
+    name: plan.name,
+    price_minor: plan.priceMinor,
+    currency: plan.currency,
+    interval: plan.interval,
   }
 
-  const existing = await db.select().from(plans).where(eq(plans.id, planId)).limit(1)
+  const existing = await db.select().from(plans).where(eq(plans.id, plan.id)).limit(1)
   if (existing[0]) {
-    if (existing[0].price_minor !== plan.price_minor || existing[0].interval !== plan.interval) {
+    const current = existing[0]
+    if (
+      current.name !== values.name ||
+      current.price_minor !== values.price_minor ||
+      current.currency !== values.currency ||
+      current.interval !== values.interval
+    ) {
       const [synced] = await db
         .update(plans)
-        .set({ price_minor: plan.price_minor, currency: plan.currency, interval: plan.interval })
-        .where(eq(plans.id, planId))
+        .set(values)
+        .where(eq(plans.id, plan.id))
         .returning()
-      return synced ?? existing[0]
+      return synced ?? current
     }
-    return existing[0]
+    return current
   }
 
   const [created] = await db
     .insert(plans)
-    .values({ id: planId, ...plan })
+    .values({ id: plan.id, ...values })
     .onConflictDoNothing()
     .returning()
 
   if (created) return created
-  const [after] = await db.select().from(plans).where(eq(plans.id, planId)).limit(1)
+  const [after] = await db.select().from(plans).where(eq(plans.id, plan.id)).limit(1)
   return after
 }
 
@@ -94,9 +102,13 @@ export async function POST(request: Request) {
   }
 
   const { name, email, businessName } = parsed.data
+  const selectedPlan = parsed.data.planId ? getSalesPlan(parsed.data.planId) : DEFAULT_SALES_PLAN
+
+  if (!selectedPlan) {
+    return NextResponse.json({ error: "Invalid plan" }, { status: 400 })
+  }
+
   const slug = (parsed.data.slug ? slugify(parsed.data.slug) : slugify(businessName)) || "store"
-  const planId = parsed.data.planId ?? "starter"
-  const currency = (parsed.data.currency ?? "NGN").toUpperCase()
   const region = parsed.data.region ?? "ng"
 
   // Body value wins when the sales page was opened with ?ref=CODE; the
@@ -108,8 +120,8 @@ export async function POST(request: Request) {
     slug,
     businessName,
     ownerEmail: email,
-    plan: planId === "growth" || planId === "scale" ? planId : "starter",
-    currency,
+    plan: selectedPlan.tenantPlan,
+    currency: selectedPlan.currency,
     region,
   })
 
@@ -145,16 +157,16 @@ export async function POST(request: Request) {
       customer = created
     }
 
-    const plan = await ensurePlan(signupPayload.data.plan, currency)
-    const amountMinor = plan?.price_minor ?? 15490000
-    const orderCurrency = plan?.currency ?? currency
+    const plan = await ensurePlan(selectedPlan)
+    const amountMinor = plan?.price_minor ?? selectedPlan.priceMinor
+    const orderCurrency = plan?.currency ?? selectedPlan.currency
     const providerReference = randomReference()
 
     const [order] = await db
       .insert(orders)
       .values({
         customer_id: customer.id,
-        plan_id: signupPayload.data.plan,
+        plan_id: selectedPlan.id,
         provider: "paystack",
         provider_reference: providerReference,
         amount_minor: amountMinor,
@@ -171,7 +183,7 @@ export async function POST(request: Request) {
       meta: {
         orderId: order.id,
         email,
-        planId: signupPayload.data.plan,
+        planId: selectedPlan.id,
         referralApplied: Boolean(referralEnrollment),
       },
     })
@@ -202,6 +214,7 @@ export async function POST(request: Request) {
           customer_name: name,
           business_name: businessName,
           slug,
+          plan_id: selectedPlan.id,
         },
       }),
     })

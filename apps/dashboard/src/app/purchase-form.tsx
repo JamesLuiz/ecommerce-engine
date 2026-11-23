@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 
+import { formatNaira } from "@lib/referral-rules"
+import { DEFAULT_SALES_PLAN, SALES_PLANS, type SalesPlanId } from "@lib/sales-plans"
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -16,8 +19,11 @@ export default function PurchaseForm() {
   const [businessName, setBusinessName] = useState("")
   const [slug, setSlug] = useState("")
   const [slugTouched, setSlugTouched] = useState(false)
+  const [planId, setPlanId] = useState<SalesPlanId>(DEFAULT_SALES_PLAN.id)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const selectedPlan = SALES_PLANS.find((plan) => plan.id === planId) ?? DEFAULT_SALES_PLAN
 
   const onBusinessNameChange = (value: string) => {
     setBusinessName(value)
@@ -41,6 +47,7 @@ export default function PurchaseForm() {
           email,
           businessName,
           slug,
+          planId,
           ...(referralCode ? { referralCode } : {}),
         }),
       })
@@ -70,7 +77,53 @@ export default function PurchaseForm() {
   const labelClass = "flex flex-col gap-2 text-xs font-medium uppercase tracking-[0.12em] text-white/60"
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 grid gap-4 sm:grid-cols-2">
+    <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
+      <fieldset className="sm:col-span-2">
+        <legend className="text-xs font-medium uppercase tracking-[0.12em] text-white/60">
+          Choose your plan
+        </legend>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {SALES_PLANS.map((plan) => {
+            const active = plan.id === planId
+
+            return (
+              <label
+                key={plan.id}
+                className={`relative cursor-pointer rounded-xl border p-4 transition focus-within:ring-2 focus-within:ring-white/30 ${
+                  active
+                    ? "border-white bg-white/10"
+                    : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                } ${pending ? "cursor-not-allowed opacity-70" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="planId"
+                  value={plan.id}
+                  checked={active}
+                  onChange={() => setPlanId(plan.id)}
+                  disabled={pending}
+                  className="sr-only"
+                />
+                <span className="flex items-start justify-between gap-3">
+                  <span>
+                    <span className="block text-sm font-medium text-white">{plan.periodLabel}</span>
+                    <span className="mt-1 block text-[11px] text-white/50">{plan.badge}</span>
+                  </span>
+                  <span className="text-right">
+                    <span className="block text-lg font-semibold tracking-[-0.04em] text-white">
+                      {formatNaira(plan.priceMinor)}
+                    </span>
+                    <span className="mt-1 block text-[10px] uppercase tracking-[0.14em] text-white/40">
+                      Setup in 24h
+                    </span>
+                  </span>
+                </span>
+              </label>
+            )
+          })}
+        </div>
+      </fieldset>
+
       <label className={labelClass}>
         Your name
         <input
@@ -150,7 +203,9 @@ export default function PurchaseForm() {
           disabled={pending}
           className="inline-flex items-center justify-center rounded-full bg-white px-7 py-4 text-sm font-medium text-neutral-900 transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0"
         >
-          {pending ? "Redirecting to payment..." : "Pay ₦154,900/yr and get my store"}
+          {pending
+            ? "Redirecting to payment..."
+            : `Pay ${formatNaira(selectedPlan.priceMinor)} for ${selectedPlan.periodLabel}`}
         </button>
         <p className="text-xs leading-5 text-white/50">
           Secure payment via Paystack. We&apos;ll log your order and begin setup within 24 hours

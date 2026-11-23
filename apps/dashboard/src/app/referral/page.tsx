@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 
-import { formatNaira, REFERRAL_BONUS_MINOR } from "@lib/referral-rules"
+import { formatNaira } from "@lib/referral-rules"
+import { SIX_MONTH_PLAN, YEARLY_PLAN } from "@lib/sales-plans"
 import { ReferralEnrollmentForm } from "./enrollment-form"
 
 export const metadata: Metadata = {
@@ -9,9 +10,12 @@ export const metadata: Metadata = {
   description: "Earn a bonus for every store you help Flowcheq Commerce set up.",
 }
 
+const sixMonthBonus = formatNaira(SIX_MONTH_PLAN.referralBonusMinor)
+const yearlyBonus = formatNaira(YEARLY_PLAN.referralBonusMinor)
+
 const points = [
   "Get a unique link to the Flowcheq sales page.",
-  "Earn a bonus for every successful store purchase from your link.",
+  `Earn ${sixMonthBonus} for a 6-month store or ${yearlyBonus} for a yearly store bought through your link.`,
   "Track referrals and earnings on your private dashboard.",
   "Payments are settled manually to the bank account you provide.",
 ]
@@ -29,7 +33,8 @@ export default function ReferralPage() {
             Referral program
           </p>
           <h1 className="mt-6 max-w-xl text-5xl font-semibold leading-[0.95] tracking-[-0.07em] md:text-6xl">
-            Earn {formatNaira(REFERRAL_BONUS_MINOR)} for every store you help us set up.
+            Earn {sixMonthBonus} for a 6-month store or {yearlyBonus} for a yearly store you help us
+            set up.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-neutral-600">
             Know a business owner who needs an online store? Share your link. When they buy a store

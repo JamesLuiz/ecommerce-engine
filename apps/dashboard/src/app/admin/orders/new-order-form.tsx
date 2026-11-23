@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
+import { getSalesPlan } from "@lib/sales-plans"
+
 interface CustomerOption {
   id: string
   email: string
@@ -132,7 +134,7 @@ export function NewOrderForm({ customers, plans }: NewOrderFormProps) {
         slug,
         businessName,
         ownerEmail: customer.email,
-        plan: planId,
+        plan: getSalesPlan(planId)?.tenantPlan ?? planId,
         currency,
         region,
       },

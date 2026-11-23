@@ -1,9 +1,16 @@
 import Link from "next/link"
 
 import PurchaseForm from "./purchase-form"
-import { formatNaira, REFERRAL_BONUS_MINOR } from "@lib/referral-rules"
+import { formatNaira } from "@lib/referral-rules"
+import { SIX_MONTH_PLAN, YEARLY_PLAN } from "@lib/sales-plans"
 
 export const dynamic = "force-dynamic"
+
+const sixMonthPrice = formatNaira(SIX_MONTH_PLAN.priceMinor)
+const yearlyPrice = formatNaira(YEARLY_PLAN.priceMinor)
+const referralRange = `${formatNaira(SIX_MONTH_PLAN.referralBonusMinor)}–${formatNaira(
+  YEARLY_PLAN.referralBonusMinor
+)}`
 
 const capabilities = [
   {
@@ -66,7 +73,7 @@ const included = [
 const steps = [
   {
     title: "Make your payment",
-    body: "Secure your e-commerce setup for ₦154,900/yr.",
+    body: "Choose a 6-month or yearly plan and pay securely.",
   },
   {
     title: "Share your business details",
@@ -113,9 +120,9 @@ const faqs = [
       "Yes. You can update products, prices, images, stock and order status from the admin dashboard.",
   },
   {
-    question: "What does the ₦154,900/yr cover?",
+    question: "What do the plans cover?",
     answer:
-      "It covers the dedicated storefront, product catalogue, order and inventory management, online payment integration, sales reporting, the admin dashboard, deployment and initial configuration.",
+      "Both plans cover the dedicated storefront, product catalogue, order and inventory management, online payment integration, sales reporting, the admin dashboard, deployment and initial configuration. The only difference is whether your setup runs for six months or a year.",
   },
 ]
 
@@ -189,7 +196,7 @@ export default function HomePage() {
                 href="/referral"
                 className="font-medium text-[var(--brand-primary)] underline underline-offset-4"
               >
-                Earn {formatNaira(REFERRAL_BONUS_MINOR)} per referral
+                Earn {referralRange} per referral
               </Link>
               .
             </p>
@@ -222,12 +229,12 @@ export default function HomePage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3 pt-3">
                   <div className="rounded-2xl bg-[#f5f3ef] p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-neutral-600">Setup</p>
-                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em]">24 hours</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-neutral-600">6 months</p>
+                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em]">{sixMonthPrice}</p>
                   </div>
                   <div className="rounded-2xl bg-[#f5f3ef] p-4">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-neutral-600">Per year</p>
-                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em]">₦154,900</p>
+                    <p className="mt-2 text-lg font-semibold tracking-[-0.04em]">{yearlyPrice}</p>
                   </div>
                 </div>
               </div>
@@ -238,7 +245,9 @@ export default function HomePage() {
 
       <section className="border-b border-black/5 bg-white">
         <div className="content-container grid gap-4 py-6 text-sm text-neutral-600 sm:grid-cols-3">
-          <p>₦154,900/yr setup</p>
+          <p>
+            {sixMonthPrice}/6 months or {yearlyPrice}/year
+          </p>
           <p>Live within 24 hours</p>
           <p>No developer needed</p>
         </div>
@@ -428,23 +437,33 @@ export default function HomePage() {
           <div className="grid gap-10 p-8 md:p-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
             <div>
               <span className="inline-flex rounded-full border border-white/15 px-3 py-1 text-xs font-medium text-white/70">
-                December offer
+                Simple pricing
               </span>
               <h2 className="mt-6 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-0.06em] md:text-5xl">
-                Get your own e-commerce store for ₦154,900/yr.
+                Choose the setup plan that fits your business.
               </h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-white/60">
-                An annual plan of ₦154,900. Share your details, pay securely, and we&apos;ll configure and
-                deploy your dedicated store within 24 hours of receiving your details and payment.
+                Start with {sixMonthPrice} for six months or keep going with {yearlyPrice} for a year.
+                Both plans include everything below. Share your details, pay securely, and we&apos;ll
+                deploy your store within 24 hours of receiving them.
               </p>
 
               <PurchaseForm />
             </div>
 
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-6 md:p-8">
-              <p className="text-sm text-white/50">Per year</p>
-              <p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">₦154,900</p>
-              <p className="mt-2 text-sm text-white/50">Everything you need to start selling online.</p>
+              <p className="text-sm text-white/50">Two ways to start</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/50">6 months</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-[-0.05em]">{sixMonthPrice}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/50">12 months</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-[-0.05em]">{yearlyPrice}</p>
+                </div>
+              </div>
+              <p className="mt-4 text-sm text-white/50">Everything you need to start selling online.</p>
 
               <ul className="mt-7 space-y-3">
                 {includedInPrice.map((item) => (

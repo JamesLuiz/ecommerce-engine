@@ -19,12 +19,12 @@ import {
 import { recordAudit } from "@lib/audit"
 import { db } from "@lib/db"
 import {
-  REFERRAL_BONUS_MINOR,
   REFERRAL_CODE_ALPHABET,
   REFERRAL_CODE_LENGTH,
   REFERRAL_COOKIE,
   REFERRAL_CURRENCY,
   periodStarts,
+  referralBonusMinorForPlan,
   referralCodeSchema,
   type EnrollmentInput,
   type SettlementRequest,
@@ -216,13 +216,15 @@ export async function creditReferralForOrder(
     return { credited: false, reason: "self_referral" }
   }
 
+  const bonusMinor = referralBonusMinorForPlan(order.plan_id)
+
   const [earning] = await db
     .insert(referral_earnings)
     .values({
       enrollment_id: order.referral_enrollment_id,
       order_id: order.id,
       customer_id: order.customer_id,
-      amount_minor: REFERRAL_BONUS_MINOR,
+      amount_minor: bonusMinor,
       currency: REFERRAL_CURRENCY,
     })
     .onConflictDoNothing()
@@ -236,7 +238,7 @@ export async function creditReferralForOrder(
     meta: {
       orderId: order.id,
       enrollmentId: order.referral_enrollment_id,
-      amountMinor: REFERRAL_BONUS_MINOR,
+      amountMinor: bonusMinor,
     },
   })
 

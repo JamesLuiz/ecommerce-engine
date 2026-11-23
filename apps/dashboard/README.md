@@ -221,24 +221,23 @@ before it enters the provisioning pipeline.
 
 ### 3.2 Collect the plan payment
 
-The plan fee is collected with Paystack from the landing page:
+The plan fee is collected with Paystack from the landing page. The sales catalog
+in `src/lib/sales-plans.ts` defines two NGN plans: `starter-6m` at 9,580,000
+kobo and `starter` at 15,490,000 kobo. Both provision the `starter` tenant tier,
+but the raw plan id is kept on the order so referral credit can be plan-specific.
 
-1. Initialize the Paystack transaction through the central gateway
-   (`POST /v1/transactions/initialize`) and keep the returned gateway reference
-   and authorization URL.
-2. Create the control-plane order with the plan amount in minor units (for the
-   `starter` plan priced at 154900 in the `NGN` currency, `amount_minor` is
-   15490000), the provider (`paystack`), the gateway reference as
-   `provider_reference`, status `pending` and the tenant configuration as
-   `signup_payload`. Today this is done from **Orders > Create order** or
-   `POST /api/admin/orders`.
-3. Send the customer to the Paystack authorization URL.
-4. On `charge.success` the gateway forwards the event to the tenant backend and
-   calls the dashboard; the order becomes paid, the tenant is created and
-   provisioning is queued.
+1. The public checkout initializes the Paystack transaction
+   (`POST https://api.paystack.co/transaction/initialize`) with the selected
+   plan amount and keeps the returned reference and authorization URL.
+2. It creates the control-plane order with that amount, the provider
+   (`paystack`), the Paystack reference as `provider_reference`, status
+   `pending` and the tenant configuration as `signup_payload`. Staff can also
+   create orders from **Orders > Create order** or `POST /api/admin/orders`.
+3. The customer is sent to the Paystack authorization URL.
+4. On `charge.success` the dashboard webhook marks the order paid, the tenant is
+   created and provisioning is queued.
 
-A public, unauthenticated signup endpoint that performs steps 1-3 from the
-landing page is not implemented yet.
+`POST /api/public/checkout` performs steps 1-3 for the sales page.
 
 ### 3.3 Queue the deployment per order
 
@@ -377,8 +376,9 @@ The dashboard also hosts the public referral program and its staff payout consol
 - Checkout resolves the code to an active enrollee and stores it on the order.
   Unknown codes are ignored; an enrollee cannot earn from their own email.
 - Every paid path (Paystack webhook, checkout callback and staff "mark paid")
-  calls the same credit function. It inserts at most one NGN 18,000
-  (1,800,000 kobo) earning per order, so duplicate webhooks cannot double-pay.
+  calls the same credit function. It inserts at most one NGN 9,000 (900,000
+  kobo) earning for a 6-month order or NGN 18,000 (1,800,000 kobo) for a yearly
+  order, so duplicate webhooks cannot double-pay.
 - `/me` shows earnings for today, this week (UTC Monday start), this month and
   this year, plus total referrals, lifetime earnings, joined date, settlement
   status and the referred customers' payment references.
