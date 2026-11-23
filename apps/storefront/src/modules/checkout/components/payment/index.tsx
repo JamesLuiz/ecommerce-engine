@@ -91,16 +91,31 @@ const Payment = ({
         activeSession?.provider_id === selectedPaymentMethod
 
       if (isPaystackGateway(selectedPaymentMethod)) {
-        const callbackUrl = `${window.location.origin}${pathname}`
+        const callbackParams = new URLSearchParams({
+          gateway: "paystack",
+          cart_id: cart.id,
+        })
+        const countryCode = pathname.split("/").filter(Boolean)[0]
 
-        let authorizationUrl = checkActiveSession
+        if (countryCode) {
+          callbackParams.set("country_code", countryCode)
+        }
+
+        const callbackUrl = `${window.location.origin}/api/payment-return?${callbackParams.toString()}`
+
+        const sessionMatchesReturn =
+          checkActiveSession &&
+          activeSession?.data?.email === cart.email &&
+          activeSession?.data?.callback_url === callbackUrl
+
+        let authorizationUrl = sessionMatchesReturn
           ? getAuthorizationUrl(activeSession)
           : null
 
         if (!authorizationUrl) {
           const response = await initiatePaymentSession(cart, {
             provider_id: selectedPaymentMethod,
-            data: { callback_url: callbackUrl },
+            data: { callback_url: callbackUrl, email: cart.email },
           })
 
           const session = response.payment_collection?.payment_sessions?.find(
@@ -148,19 +163,6 @@ const Payment = ({
   useEffect(() => {
     setError(null)
   }, [isOpen])
-
-  useEffect(() => {
-    const reference =
-      searchParams.get("reference") ?? searchParams.get("trxref")
-
-    if (!reference || searchParams.get("step") === "review") {
-      return
-    }
-
-    router.replace(pathname + "?" + createQueryString("step", "review"), {
-      scroll: false,
-    })
-  }, [createQueryString, pathname, router, searchParams])
 
   return (
     <div className="bg-white">

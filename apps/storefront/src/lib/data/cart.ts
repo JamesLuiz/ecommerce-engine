@@ -395,7 +395,10 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
  * @param cartId - optional - The ID of the cart to place an order for.
  * @returns The cart object if the order was successful, or null if not.
  */
-export async function placeOrder(cartId?: string) {
+export async function placeOrder(
+  cartId?: string,
+  confirmationParams?: Record<string, string>
+) {
   const id = cartId || (await getCartId())
 
   if (!id) {
@@ -423,7 +426,10 @@ export async function placeOrder(cartId?: string) {
     revalidateTag(orderCacheTag, { expire: 0 })
 
     removeCartId()
-    redirect(`/${countryCode}/order/${cartRes?.order.id}/confirmed`)
+    const query = new URLSearchParams(confirmationParams).toString()
+    const suffix = query ? `?${query}` : ""
+
+    redirect(`/${countryCode}/order/${cartRes?.order.id}/confirmed${suffix}`)
   }
 
   return cartRes.cart

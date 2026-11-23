@@ -1,4 +1,8 @@
-import { Heading } from "@modules/common/components/ui"
+import {
+  Container,
+  Heading,
+  Text,
+} from "@modules/common/components/ui"
 import { cookies as nextCookies } from "next/headers"
 
 import CartTotals from "@modules/common/components/cart-totals"
@@ -12,10 +16,12 @@ import { HttpTypes } from "@medusajs/types"
 
 type OrderCompletedTemplateProps = {
   order: HttpTypes.StoreOrder
+  statusMessage?: string
 }
 
 export default async function OrderCompletedTemplate({
   order,
+  statusMessage,
 }: OrderCompletedTemplateProps) {
   const cookies = await nextCookies()
 
@@ -29,6 +35,17 @@ export default async function OrderCompletedTemplate({
           className="flex flex-col gap-4 max-w-4xl h-full bg-white w-full py-10"
           data-testid="order-complete-container"
         >
+          {statusMessage && (
+            <Container
+              className="mb-4 border border-ui-border-base"
+              role="status"
+              data-testid="payment-status-message"
+            >
+              <Text className="txt-medium text-ui-fg-base">
+                {statusMessage}
+              </Text>
+            </Container>
+          )}
           <Heading
             level="h1"
             className="flex flex-col gap-y-3 text-ui-fg-base text-3xl mb-4"

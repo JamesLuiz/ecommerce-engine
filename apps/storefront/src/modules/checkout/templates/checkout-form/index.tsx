@@ -1,5 +1,6 @@
 import { listCartShippingMethods } from "@lib/data/fulfillment"
 import { listCartPaymentMethods } from "@lib/data/payment"
+import type { PaymentStatus } from "@lib/payment-status"
 import { HttpTypes } from "@medusajs/types"
 import Addresses from "@modules/checkout/components/addresses"
 import Payment from "@modules/checkout/components/payment"
@@ -28,9 +29,11 @@ const CheckoutUnavailable = ({
 export default async function CheckoutForm({
   cart,
   customer,
+  paymentStatus,
 }: {
   cart: HttpTypes.StoreCart | null
   customer: HttpTypes.StoreCustomer | null
+  paymentStatus?: PaymentStatus
 }) {
   if (!cart) {
     return null
@@ -65,14 +68,27 @@ export default async function CheckoutForm({
   }
 
   return (
-    <div className="w-full grid grid-cols-1 gap-y-8">
-      <Addresses cart={cart} customer={customer} />
+    <>
+      {paymentStatus?.message && (
+        <Container
+          className="mb-6 border border-ui-border-base"
+          role={paymentStatus.payment === "failed" ? "alert" : "status"}
+          data-testid="payment-status-message"
+        >
+          <Text className="txt-medium text-ui-fg-base">
+            {paymentStatus.message}
+          </Text>
+        </Container>
+      )}
+      <div className="w-full grid grid-cols-1 gap-y-8">
+        <Addresses cart={cart} customer={customer} />
 
-      <Shipping cart={cart} availableShippingMethods={shippingMethods} />
+        <Shipping cart={cart} availableShippingMethods={shippingMethods} />
 
-      <Payment cart={cart} availablePaymentMethods={paymentMethods} />
+        <Payment cart={cart} availablePaymentMethods={paymentMethods} />
 
-      <Review cart={cart} />
-    </div>
+        <Review cart={cart} />
+      </div>
+    </>
   )
 }

@@ -2,9 +2,22 @@ import { sdk } from "@lib/config"
 import { submitAdyenPayment } from "@lib/data/adyen"
 import { placeOrder } from "@lib/data/cart"
 import { getAuthHeaders, setCartId } from "@lib/data/cookies"
+import {
+  PAYMENT_FAILED_MESSAGE,
+  PAYMENT_SUCCESS_MESSAGE,
+} from "@lib/payment-status"
 import { HttpTypes } from "@medusajs/types"
 import { unstable_rethrow } from "next/navigation"
 import { NextRequest, NextResponse } from "next/server"
+
+const PAYSTACK_PROVIDER_PREFIX = "pp_paystack-gateway"
+
+const paymentFailedRedirect = (origin: string, prefix: string) =>
+  NextResponse.redirect(
+    `${origin}${prefix}/checkout?step=payment&payment=failed&message=${encodeURIComponent(
+      PAYMENT_FAILED_MESSAGE
+    )}`
+  )
 
 export async function GET(req: NextRequest) {
   const { origin, searchParams } = req.nextUrl
@@ -22,6 +35,54 @@ export async function GET(req: NextRequest) {
   const prefix = countryCode ? `/${countryCode}` : ""
   const rejected = () =>
     NextResponse.redirect(`${origin}${prefix}/cart?error=payment_failed`)
+
+  // Paystack redirects the shopper back with a reference. The cart is recovered
+  // from the callback URL so a dropped storefront cookie cannot lose the order.
+  if (searchParams.get("gateway") === "paystack") {
+    const reference =
+      searchParams.get("reference") ?? searchParams.get("trxref")
+
+    if (!cartId || !reference) {
+      return paymentFailedRedirect(origin, prefix)
+    }
+
+    await setCartId(cartId)
+
+    const cart = await sdk.client
+      .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${cartId}`, {
+        method: "GET",
+        query: { fields: "payment_collection.payment_sessions.data" },
+        headers: { ...(await getAuthHeaders()) },
+        cache: "no-store",
+      })
+      .then(({ cart }) => cart)
+      .catch(() => null)
+
+    const paystackSession = cart?.payment_collection?.payment_sessions?.find(
+      (session) =>
+        session.provider_id?.startsWith(PAYSTACK_PROVIDER_PREFIX) &&
+        session.data?.reference === reference
+    )
+
+    if (!paystackSession) {
+      return paymentFailedRedirect(origin, prefix)
+    }
+
+    try {
+      // Completing the cart authorizes the session through the gateway. That
+      // verifies the reference with Paystack even if the webhook has not arrived.
+      await placeOrder(cartId, {
+        payment: "success",
+        message: PAYMENT_SUCCESS_MESSAGE,
+      })
+    } catch (error) {
+      unstable_rethrow(error)
+
+      return paymentFailedRedirect(origin, prefix)
+    }
+
+    return paymentFailedRedirect(origin, prefix)
+  }
 
   // Adyen returns the shopper here after a redirect, for example to their bank's
   // authentication page, with the result to submit to the payment session.

@@ -75,12 +75,16 @@ export class PaystackGatewayPaymentProvider extends AbstractPaymentProvider<Pays
   }
 
   private getEmail(input: any): string {
-    return (
-      input.context?.customer?.email ??
+    const email =
       input.data?.email ??
+      input.context?.cart?.email ??
       input.context?.email ??
+      input.context?.customer?.email ??
       "customer@example.com"
-    )
+
+    return typeof email === "string" && email.trim()
+      ? email.trim()
+      : "customer@example.com"
   }
 
   private getCallbackUrl(input: any): string {
@@ -152,6 +156,8 @@ export class PaystackGatewayPaymentProvider extends AbstractPaymentProvider<Pays
         reference: data.reference ?? externalRef,
         authorization_url: data.authorization_url,
         access_code: data.access_code,
+        email,
+        callback_url: callbackUrl,
         mode: "direct",
       },
       status: "pending",
@@ -179,6 +185,8 @@ export class PaystackGatewayPaymentProvider extends AbstractPaymentProvider<Pays
         reference: result.reference,
         authorization_url: result.authorization_url,
         access_code: result.access_code,
+        email,
+        callback_url: callbackUrl,
         mode: "platform",
       },
       status: "pending",

@@ -69,6 +69,42 @@ describe("PaystackGatewayPaymentProvider", () => {
     fetchSpy.mockRestore()
   })
 
+  it("sends the checkout form email instead of the gateway fallback", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch").mockImplementation(async () => {
+      return {
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            reference: "acme_ref_100",
+            authorization_url: "https://checkout.paystack.com/auth_2",
+            access_code: "code_2",
+          }),
+      } as any
+    })
+
+    const result = await provider.initiatePayment({
+      amount: 2500,
+      currency_code: "ngn",
+      context: {
+        customer: { email: "stale.customer@example.com" },
+        idempotency_key: "payses_002",
+      },
+      data: {
+        email: "buyer@example.com",
+        callback_url: "https://acme.example.com/api/payment-return",
+      },
+    })
+
+    const requestBody = JSON.parse(
+      String(fetchSpy.mock.calls[0]?.[1]?.body)
+    ) as { email: string }
+
+    expect(requestBody.email).toBe("buyer@example.com")
+    expect(result.data.email).toBe("buyer@example.com")
+
+    fetchSpy.mockRestore()
+  })
+
   it("authorizes successfully and returns captured when gateway returns success", async () => {
     const fetchSpy = jest.spyOn(global, "fetch").mockImplementation(async () => {
       return {
