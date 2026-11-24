@@ -36,6 +36,22 @@ const resolveVariantId = async (form: FormData, regionId: string) => {
   )?.id
 }
 
+const isOpenCart = async (cartId?: string) => {
+  if (!cartId) {
+    return false
+  }
+
+  const { cart } = await sdk.client
+    .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${cartId}`, {
+      method: "GET",
+      query: { fields: "id,completed_at" },
+      cache: "no-store",
+    })
+    .catch(() => ({ cart: null }))
+
+  return !!cart && !cart.completed_at
+}
+
 const addLineItem = async (
   cartId: string | undefined,
   regionId: string,
@@ -79,14 +95,15 @@ export async function POST(
   }
 
   const existingCartId = await getCartId()
+  const openCartId = (await isOpenCart(existingCartId)) ? existingCartId : undefined
   let cartId: string
   try {
-    cartId = await addLineItem(existingCartId, region.id, variantId, quantity)
+    cartId = await addLineItem(openCartId, region.id, variantId, quantity)
   } catch (error) {
-    if (!existingCartId) {
+    if (!openCartId) {
       return new NextResponse(errorMessage(error), { status: 400 })
     }
-    // The stored cart may be completed or belong to another region.
+    // The stored cart may belong to another region.
     try {
       cartId = await addLineItem(undefined, region.id, variantId, quantity)
     } catch (retryError) {

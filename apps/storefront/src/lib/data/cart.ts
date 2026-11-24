@@ -93,13 +93,21 @@ export async function getOrSetCart(countryCode: string) {
     throw new Error(`Region not found for country code: ${countryCode}`)
   }
 
-  let cart = await retrieveCart(undefined, "id,region_id")
+  // `retrieveCart` returns null for completed carts. Drop the stale cookie so
+  // add-to-cart starts a fresh cart instead of adding to an existing order.
+  let cart = await retrieveCart(undefined, "id,region_id,completed_at")
 
   const headers = {
     ...(await getAuthHeaders()),
   }
 
   if (!cart) {
+    const staleCartId = await getCartId()
+
+    if (staleCartId) {
+      await removeCartId()
+    }
+
     const locale = await getLocale()
     const cartResp = await sdk.store.cart.create(
       { region_id: region.id, locale: locale || undefined },
