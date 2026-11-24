@@ -5,8 +5,9 @@
  * - a Nigeria (ng) region exists with NGN currency
  * - a Nigeria tax region exists
  * - the store supports NGN as default currency and points to the Nigeria region
- * - all existing product variants have an NGN (₦100) price so products remain
- *   purchasable after switching from legacy regions/currencies
+ * - all existing product variants have a default NGN (₦100) price so products
+ *   remain purchasable after switching from legacy regions/currencies. Existing
+ *   prices are preserved; only missing default prices are added.
  *
  * Run after migrations on existing environments:
  *   npx medusa exec ./src/scripts/ensure-nigeria-pricing.ts
@@ -16,10 +17,10 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import {
   createRegionsWorkflow,
   createTaxRegionsWorkflow,
-  updateProductVariantsWorkflow,
   updateRegionsWorkflow,
   updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows"
+import { ensureDefaultCurrencyPrices } from "../lib/ensure-default-prices"
 import { DEFAULT_REGION_STORE_POLICIES } from "../lib/region-store-policies"
 
 const SYSTEM_PAYMENT_PROVIDER = "pp_system_default"
@@ -167,31 +168,18 @@ export default async function ensureNigeriaPricing({ container }: ExecArgs) {
   }
 
   try {
-    const { data: variants } = await query.graph({
-      entity: "product_variant",
-      fields: ["id"],
-    })
-
-    const variantIds = (variants || [])
-      .map((variant: { id?: string }) => variant.id)
-      .filter((id): id is string => Boolean(id))
-
-    const batchSize = 100
-    for (let i = 0; i < variantIds.length; i += batchSize) {
-      const batch = variantIds.slice(i, i + batchSize)
-      await updateProductVariantsWorkflow(container).run({
-        input: {
-          product_variants: batch.map((id) => ({
-            id,
-            prices: [{ amount: NGN_PRICE_AMOUNT, currency_code: "ngn" }],
-          })),
-        },
-      })
-    }
+    const { variants, added, zeroPriceListPrices } =
+      await ensureDefaultCurrencyPrices(container, "ngn", NGN_PRICE_AMOUNT)
 
     logger.info(
-      `Ensured NGN (₦${NGN_PRICE_AMOUNT}) prices for ${variantIds.length} product variant(s).`
+      `Ensured NGN (₦${NGN_PRICE_AMOUNT}) default prices for ${variants} product variant(s); added ${added}.`
     )
+
+    if (zeroPriceListPrices > 0) {
+      logger.warn(
+        `Found ${zeroPriceListPrices} active NGN price-list price(s) with a zero amount. These override default prices in the cart; review them in Admin.`
+      )
+    }
   } catch (error) {
     logger.warn(
       `Skipped NGN price backfill for existing variants: ${(error as Error)?.message ?? error}`

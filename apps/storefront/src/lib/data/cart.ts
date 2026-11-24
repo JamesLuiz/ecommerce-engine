@@ -55,8 +55,11 @@ const requireOpenCartId = async () => {
  */
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
+  // Every entry must keep a modifier prefix (`*` or `+`). A plain field makes
+  // Medusa replace its default field set, which drops cart-level totals such
+  // as `total`, `subtotal` and `tax_total`; the UI then renders them as zero.
   fields ??=
-    "id, completed_at, *items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, *payment_collection, *payment_collection.payment_sessions, payment_collection.payment_sessions.data"
+    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, *payment_collection, *payment_collection.payment_sessions, +payment_collection.payment_sessions.data"
 
   if (!id) {
     return null
@@ -66,10 +69,6 @@ export async function retrieveCart(cartId?: string, fields?: string) {
     ...(await getAuthHeaders()),
   }
 
-  const next = {
-    ...(await getCacheOptions("carts")),
-  }
-
   return await sdk.client
     .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${id}`, {
       method: "GET",
@@ -77,8 +76,7 @@ export async function retrieveCart(cartId?: string, fields?: string) {
         fields,
       },
       headers,
-      next,
-      cache: "force-cache",
+      cache: "no-store",
     })
     .then(({ cart }: { cart: HttpTypes.StoreCart }) =>
       cart.completed_at ? null : cart

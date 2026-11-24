@@ -3,10 +3,10 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import {
   createRegionsWorkflow,
   createTaxRegionsWorkflow,
-  updateProductVariantsWorkflow,
   updateRegionsWorkflow,
   updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows";
+import { ensureDefaultCurrencyPrices } from "../lib/ensure-default-prices";
 import { DEFAULT_REGION_STORE_POLICIES } from "../lib/region-store-policies";
 
 const SYSTEM_PAYMENT_PROVIDER = "pp_system_default";
@@ -21,7 +21,9 @@ const SYSTEM_TAX_PROVIDER = "tp_system";
  * - ensures a region containing Nigeria ("ng") exists with NGN,
  * - repurposes the legacy starter region (Europe / Denmark) when present,
  * - ensures the store lists NGN (Naira) and uses it as the default currency,
- * - points the store default region at Nigeria so fresh setups land on "ng".
+ * - points the store default region at Nigeria so fresh setups land on "ng",
+ * - adds a missing default NGN price to existing variants without replacing
+ *   merchant-edited prices.
  */
 export default async function nigeriaRegionDefault({
   container,
@@ -170,34 +172,22 @@ export default async function nigeriaRegionDefault({
     );
   }
 
-  // Ensure existing product variants have NGN prices for the Nigeria region so
-  // products remain purchasable after switching from legacy currencies/regions.
+  // Ensure existing product variants have a default NGN price for the Nigeria
+  // region so products remain purchasable after switching from legacy
+  // currencies/regions. Existing prices are preserved; only gaps are filled.
   try {
-    const { data: variants } = await query.graph({
-      entity: "product_variant",
-      fields: ["id"],
-    });
+    const { variants, added, zeroPriceListPrices } =
+      await ensureDefaultCurrencyPrices(container, "ngn", 100);
 
-    const variantIds = (variants || [])
-      .map((variant: { id?: string }) => variant.id)
-      .filter((id): id is string => Boolean(id));
-
-    const batchSize = 100;
-    for (let i = 0; i < variantIds.length; i += batchSize) {
-      const batch = variantIds.slice(i, i + batchSize);
-      await updateProductVariantsWorkflow(container).run({
-        input: {
-          product_variants: batch.map((id) => ({
-            id,
-            prices: [{ amount: 100, currency_code: "ngn" }],
-          })),
-        },
-      });
+    if (variants > 0) {
+      logger.info(
+        `Ensured NGN (₦100) default prices for ${variants} product variant(s); added ${added}.`
+      );
     }
 
-    if (variantIds.length > 0) {
-      logger.info(
-        `Ensured NGN (₦100) prices for ${variantIds.length} product variant(s).`
+    if (zeroPriceListPrices > 0) {
+      logger.warn(
+        `Found ${zeroPriceListPrices} active NGN price-list price(s) with a zero amount. These override default prices in the cart; review them in Admin.`
       );
     }
   } catch (error) {
