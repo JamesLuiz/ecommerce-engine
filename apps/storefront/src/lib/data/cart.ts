@@ -59,7 +59,7 @@ export async function retrieveCart(cartId?: string, fields?: string) {
   // Medusa replace its default field set, which drops cart-level totals such
   // as `total`, `subtotal` and `tax_total`; the UI then renders them as zero.
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, *payment_collection, *payment_collection.payment_sessions, +payment_collection.payment_sessions.data"
+    "*items, *region, *region.countries, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, +items.subtotal, +items.original_total, +items.original_subtotal, +items.item_subtotal, +items.item_total, *promotions, +shipping_methods.name, *payment_collection, *payment_collection.payment_sessions, +payment_collection.payment_sessions.data"
 
   if (!id) {
     return null
@@ -81,7 +81,10 @@ export async function retrieveCart(cartId?: string, fields?: string) {
     .then(({ cart }: { cart: HttpTypes.StoreCart }) =>
       cart.completed_at ? null : cart
     )
-    .catch(() => null)
+    .catch((error) => {
+      console.error("Failed to retrieve cart:", error)
+      return null
+    })
 }
 
 export async function getOrSetCart(countryCode: string) {
