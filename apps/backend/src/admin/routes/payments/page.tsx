@@ -1241,7 +1241,7 @@ const PaymentsPage = () => {
                       <Table.Cell>{formatDate(payment.created_at)}</Table.Cell>
                       <Table.Cell>{payment.customer_email || "-"}</Table.Cell>
                       <Table.Cell style={{ fontWeight: 500 }}>
-                        {formatMoney(payment.amount, payment.currency_code)}
+                        {formatMajorMoney(payment.amount, payment.currency_code)}
                       </Table.Cell>
                       <Table.Cell>
                         <Text size="small">{payment.bank_name}</Text>

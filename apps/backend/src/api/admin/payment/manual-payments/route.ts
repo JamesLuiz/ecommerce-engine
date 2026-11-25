@@ -5,9 +5,13 @@ import { VENDOR_PAYMENT_MODULE } from "../../../../modules/vendor-payment"
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const vendorPaymentService = req.scope.resolve(VENDOR_PAYMENT_MODULE)
   const status = typeof req.query.status === "string" ? req.query.status : undefined
+  const orderId = typeof req.query.order_id === "string" ? req.query.order_id : undefined
+  const filters: Record<string, string> = {}
+  if (status) filters.status = status
+  if (orderId) filters.order_id = orderId
 
   const payments = await vendorPaymentService.listManualPayments(
-    status ? { status } : {},
+    filters,
     {
       order: { created_at: "DESC" },
       take: 100,
