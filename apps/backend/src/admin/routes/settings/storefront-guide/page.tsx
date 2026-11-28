@@ -38,7 +38,7 @@ const sections: GuideSection[] = [
       "Controls theme mode, the switchable storefront layout design, header and footer styles, and whether key homepage sections are shown.",
     howTo: [
       "Open Settings → Storefront → Theme & layout.",
-      "Choose Theme mode (Light, Dark, or System) and pick a Storefront layout: Minimal, Aurora, Luxe Noire, Streetline, Brutalist, Breeze, Ember, Terra, Chrome, or Pop Candy.",
+      "Choose Theme mode (Light, Dark, or System) and pick a Storefront layout: Minimal, Aurora, Luxe Noire, Streetline, Brutalist, Breeze, Ember, Terra, Chrome, Pop Candy, Air, Titanium, or Liquid Glass.",
       "Select Header style and Footer style.",
       "Toggle Show homepage hero and Show featured products on homepage to control homepage composition.",
       "Save storefront settings — the storefront re-skins itself instantly with the new design, same products and content rearranged.",
@@ -107,7 +107,7 @@ const sections: GuideSection[] = [
     howTo: [
       "Open Settings → Storefront → Navigation & features.",
       "Add, edit, or remove Navigation links (label and href/path).",
-      "Configure the Announcement bar: enable it and set text plus optional CTA label and href.",
+      "Configure the Announcement bar: enable it (it shows on every layout theme), set text plus optional CTA label and href, then pick a style — Standard, Sale, or Countdown offer — and set a countdown end date or hours for countdown offers.",
       "Toggle storefront features (search, account, locale selector, country selector, WhatsApp button, newsletter signup) as needed.",
       "Enter a WhatsApp number if WhatsApp contact is enabled.",
       "Save storefront settings.",

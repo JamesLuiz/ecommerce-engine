@@ -88,7 +88,6 @@ export default async function Nav() {
     <div className="sticky top-0 inset-x-0 z-50 group">
       <AnnouncementBar
         announcement={content.announcement}
-        className="border-b border-black/5 bg-neutral-900 text-white"
       />
       <header
         className="relative mx-auto h-20 border-b border-black/5 bg-white/80 backdrop-blur-xl"

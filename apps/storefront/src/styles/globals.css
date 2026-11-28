@@ -71,7 +71,7 @@
   /* Each `[data-layout="…"]` scope re-skins the same homepage       */
   /* sections with its own palette, surfaces, card shape and motion. */
   /* The `.theme-*` primitives give every layout shared animation    */
-  /* and typography hooks so all nine feel equally polished.         */
+  /* and typography hooks so all twelve feel equally polished.         */
   /* -------------------------------------------------------------- */
 
   .theme-reveal {
@@ -112,6 +112,109 @@
 
   .theme-price-chip {
     display: inline-flex;
+/* ------------------------------------------------------------ */
+/* Announcement bar. The nav renders the bar above the header on */
+/* every page; per-layout colors live here (not in the nav) so a */
+/* merchant toggle + style choice applies store-wide. Countdown */
+/* variant shows a live timer chip next to the CTA. */
+/* ------------------------------------------------------------ */
+
+.theme-announcement {
+ background: #171717;
+ color: #fafafa;
+}
+
+.theme-announcement a {
+ color: inherit;
+}
+
+.theme-announcement [data-announcement-cta] {
+ text-decoration: underline;
+ text-underline-offset: 3px;
+ font-weight: 600;
+}
+
+.theme-announcement [data-countdown-chip] {
+ display: inline-flex;
+ align-items: center;
+ gap: 0.35rem;
+ border-radius: 9999px;
+ padding: 0.15rem 0.6rem;
+ font-size: 0.75rem;
+ font-weight: 700;
+ font-variant-numeric: tabular-nums;
+ background: rgba(255, 255, 255, 0.14);
+}
+
+[data-layout="air"] .theme-announcement {
+ background: #1d1d1f;
+ color: #f5f5f7;
+}
+
+[data-layout="titanium"] .theme-announcement {
+ background: linear-gradient(90deg, #48484a, #1c1c1e);
+ color: #f5f5f7;
+ border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+[data-layout="liquid"] .theme-announcement {
+ background: rgba(255, 255, 255, 0.35);
+ backdrop-filter: saturate(180%) blur(24px);
+ -webkit-backdrop-filter: saturate(180%) blur(24px);
+ color: #1d1d1f;
+ border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+[data-layout="liquid"] .theme-announcement [data-countdown-chip] {
+ background: rgba(0, 113, 227, 0.12);
+ color: #0071e3;
+}
+
+[data-layout="aurora"] .theme-announcement,
+[data-layout="luxe"] .theme-announcement,
+[data-layout="ember"] .theme-announcement,
+[data-layout="chrome"] .theme-announcement {
+ background: #0b0916;
+ color: #f4f1ff;
+}
+
+[data-layout="street"] .theme-announcement {
+ background: #ff4d00;
+ color: #141414;
+ font-weight: 700;
+}
+
+[data-layout="pop"] .theme-announcement {
+ background: #232323;
+ color: #ffe9f3;
+}
+
+.theme-announcement[data-announcement-style="sale"] {
+ background: #b91c1c;
+ color: #fff7f7;
+}
+
+[data-layout="street"] .theme-announcement[data-announcement-style="sale"] {
+ background: #141414;
+ color: #ff4d00;
+}
+
+.theme-announcement[data-announcement-style="countdown"] {
+ background: linear-gradient(90deg, #7c3aed, #db2777);
+ color: #fff;
+}
+
+[data-layout="minimal"] .theme-announcement[data-announcement-style="countdown"] {
+ background: #171717;
+ color: #fafafa;
+}
+
+@media (prefers-reduced-motion: reduce) {
+ .theme-announcement [data-countdown-chip] {
+ animation: none;
+ }
+}
+
     align-items: center;
     gap: 0.4rem;
     border-radius: 9999px;
@@ -289,6 +392,42 @@
     --t-accent-2: #7c7cff;
     color-scheme: dark;
   }
+
+ [data-layout="air"] {
+ --t-bg: #f5f5f7;
+ --t-bg-soft: #e8e8ed;
+ --t-surface: #ffffff;
+ --t-ink: #1d1d1f;
+ --t-muted: rgba(29, 29, 31, 0.6);
+ --t-line: rgba(29, 29, 31, 0.12);
+ --t-accent: #0071e3;
+ --t-accent-2: #42a5f5;
+ color-scheme: light;
+ }
+
+ [data-layout="titanium"] {
+ --t-bg: #1c1c1e;
+ --t-bg-soft: #2c2c2e;
+ --t-surface: rgba(255, 255, 255, 0.06);
+ --t-ink: #f5f5f7;
+ --t-muted: rgba(245, 245, 247, 0.6);
+ --t-line: rgba(255, 255, 255, 0.16);
+ --t-accent: #d7d8dc;
+ --t-accent-2: #86868b;
+ color-scheme: dark;
+ }
+
+ [data-layout="liquid"] {
+ --t-bg: #dfe9f5;
+ --t-bg-soft: #cdddf0;
+ --t-surface: rgba(255, 255, 255, 0.35);
+ --t-ink: #1d1d1f;
+ --t-muted: rgba(29, 29, 31, 0.6);
+ --t-line: rgba(255, 255, 255, 0.5);
+ --t-accent: #0071e3;
+ --t-accent-2: #64d2ff;
+ color-scheme: light;
+ }
 
   [data-layout="pop"] {
     --t-bg: #fff6ec;
@@ -488,6 +627,64 @@
     border-width: 2px;
     box-shadow: 3px 3px 0 #ff3ea5;
   }
+ [data-layout="air"] [data-testid="add-product-button"],
+ [data-layout="air"] [data-testid="mobile-cart-button"] {
+ background: #0071e3;
+ border-radius: 9999px;
+ font-weight: 600;
+ box-shadow: 0 12px 32px rgba(0, 113, 227, 0.35);
+ }
+
+ [data-layout="air"] [data-testid="product-price"] {
+ color: #0071e3;
+ font-weight: 700;
+ }
+
+ [data-layout="air"] [data-testid="option-button"].border-ui-border-interactive {
+ border-color: #0071e3;
+ box-shadow: 0 0 0 1px #0071e3;
+ }
+
+ [data-layout="titanium"] [data-testid="add-product-button"],
+ [data-layout="titanium"] [data-testid="mobile-cart-button"] {
+ background: linear-gradient(180deg, #48484a, #1c1c1e);
+ color: #f5f5f7;
+ border: 1px solid rgba(255, 255, 255, 0.25);
+ border-radius: 12px;
+ font-weight: 600;
+ }
+
+ [data-layout="titanium"] [data-testid="product-price"] {
+ color: #f5f5f7;
+ font-weight: 700;
+ }
+
+ [data-layout="titanium"] [data-testid="option-button"].border-ui-border-interactive {
+ border-color: #d7d8dc;
+ box-shadow: 0 0 0 1px #d7d8dc;
+ }
+
+ [data-layout="liquid"] [data-testid="add-product-button"],
+ [data-layout="liquid"] [data-testid="mobile-cart-button"] {
+ background: rgba(0, 113, 227, 0.85);
+ backdrop-filter: blur(20px);
+ -webkit-backdrop-filter: blur(20px);
+ border: 1px solid rgba(255, 255, 255, 0.4);
+ border-radius: 9999px;
+ font-weight: 600;
+ box-shadow: 0 12px 32px rgba(0, 113, 227, 0.3);
+ }
+
+ [data-layout="liquid"] [data-testid="product-price"] {
+ color: #0071e3;
+ font-weight: 700;
+ }
+
+ [data-layout="liquid"] [data-testid="option-button"].border-ui-border-interactive {
+ border-color: #0071e3;
+ box-shadow: 0 0 0 1px #0071e3;
+ }
+
 
   /* ------------------------------------------------------------ */
   /* Themed navbar + footer. Dark layouts get a dark glass header */
@@ -574,6 +771,41 @@
     border-bottom-color: rgba(46, 42, 31, 0.14);
   }
 
+ [data-layout="air"] header[data-header-style] {
+ background: rgba(255, 255, 255, 0.72);
+ backdrop-filter: saturate(180%) blur(20px);
+ -webkit-backdrop-filter: saturate(180%) blur(20px);
+ border-bottom-color: rgba(29, 29, 31, 0.1);
+ }
+
+ [data-layout="titanium"] header[data-header-style] {
+ background: rgba(28, 28, 30, 0.72);
+ backdrop-filter: saturate(180%) blur(20px);
+ -webkit-backdrop-filter: saturate(180%) blur(20px);
+ border-bottom-color: rgba(255, 255, 255, 0.14);
+ }
+
+ [data-layout="titanium"] header[data-header-style] nav,
+ [data-layout="titanium"] header[data-header-style] nav a {
+ color: rgba(245, 245, 247, 0.72);
+ }
+
+ [data-layout="titanium"] header[data-header-style] nav a:hover {
+ color: #fff;
+ }
+
+ [data-layout="titanium"] header[data-header-style] [data-testid="nav-store-link"] span {
+ color: #fff;
+ }
+
+ [data-layout="liquid"] header[data-header-style] {
+ background: rgba(255, 255, 255, 0.35);
+ backdrop-filter: saturate(180%) blur(24px);
+ -webkit-backdrop-filter: saturate(180%) blur(24px);
+ border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+ }
+
+
   /* Footer method chips inherit the theme accent on hover. */
   [data-layout]:not([data-layout="minimal"]) footer a:hover {
     border-color: var(--t-accent);
@@ -582,7 +814,7 @@
   /* ------------------------------------------------------------ */
   /* Themed listing shell. Category, collection, store and search */
   /* pages render on the default light page, but hit-card frames */
-  /* for the dark layouts (aurora, luxe, ember, chrome) assume a */
+  /* for the dark layouts (aurora, luxe, ember, chrome, titanium) assume a */
   /* dark backdrop — light titles on white were unreadable. The */
   /* shell paints the layout's own surface behind the listing so */
   /* every theme reads correctly. Minimal has no palette vars, so */

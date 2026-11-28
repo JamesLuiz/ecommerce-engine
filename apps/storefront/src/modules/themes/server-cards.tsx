@@ -1,14 +1,17 @@
 import type { LayoutId, ThemedProduct } from "./registry"
+import { AirCard } from "./layouts/air"
 import { AuroraCard } from "./layouts/aurora"
 import { BreezeCard } from "./layouts/breeze"
 import { BrutalCard } from "./layouts/brutal"
 import { ChromeCard } from "./layouts/chrome"
 import { EmberCard } from "./layouts/ember"
+import { LiquidCard } from "./layouts/liquid"
 import { LuxeCard } from "./layouts/luxe"
 import { MinimalCard } from "./layouts/minimal"
 import { PopCard } from "./layouts/pop"
 import { StreetCard } from "./layouts/street"
 import { TerraCard } from "./layouts/terra"
+import { TitaniumCard } from "./layouts/titanium"
 
 /**
  * Server-side twin of `ThemedProductCard` for pages that render on the
@@ -47,6 +50,12 @@ export function ThemedServerCard({
       return <ChromeCard product={product} index={index} />
     case "pop":
       return <PopCard product={product} index={index} />
+    case "air":
+      return <AirCard product={product} index={index} />
+    case "titanium":
+      return <TitaniumCard product={product} index={index} />
+    case "liquid":
+      return <LiquidCard product={product} index={index} />
     case "minimal":
     default:
       return <MinimalCard product={product} index={index} />
@@ -64,6 +73,9 @@ const LISTING_EYEBROWS: Record<LayoutId, string> = {
   terra: "Market rows",
   chrome: "// index",
   pop: "Browse it all",
+  air: "Shop the lineup",
+  titanium: "The lineup",
+  liquid: "Explore",
 }
 
 /**

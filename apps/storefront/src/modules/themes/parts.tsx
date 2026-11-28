@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Image from "next/image"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -26,23 +27,102 @@ export function AnnouncementBar({
   className?: string
   linkClassName?: string
 }) {
-  if (!announcement) {
-    return null
-  }
+ const style = announcement?.style ?? "standard"
+ const countdown = useAnnouncementCountdown(
+ style === "countdown" ? announcement?.countdownEndsAt ?? "" : ""
+ )
 
-  return (
-    <div className={clx("theme-announcement px-4 py-2 text-center text-xs", className)}>
+ if (!announcement) {
+ return null
+ }
+ return (
+ <div
+      className={clx(
+        "theme-announcement relative px-4 py-2 text-center text-xs",
+        className
+      )}
+      data-announcement-style={style}
+ >
       <span className="opacity-90">{announcement.text}</span>
       {announcement.ctaLabel ? (
         <LocalizedClientLink
           href={announcement.ctaHref}
-          className={clx("ml-3 font-semibold underline underline-offset-4", linkClassName)}
+          className={clx(
+            "ml-3 font-semibold underline underline-offset-4",
+            linkClassName
+          )}
+ data-announcement-cta
         >
           {announcement.ctaLabel}
         </LocalizedClientLink>
       ) : null}
+      {style === "countdown" && countdown ? (
+        <span
+          aria-live="polite"
+ className="theme-announcement-countdown ml-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-[11px] font-bold tabular-nums"
+ data-countdown-chip
+        >
+          <span aria-hidden>⏳</span>
+          <span>{countdown}</span>
+        </span>
+      ) : null}
     </div>
   )
+}
+
+function pad2(value: number) {
+  return String(Math.max(0, value)).padStart(2, "0")
+}
+
+function parseCountdownTarget(raw: string): number | null {
+  if (!raw) {
+    return null
+  }
+
+  // Accept a full ISO datetime or a plain duration in hours ("48", "48h").
+  const hours = raw.match(/^(\d+(?:\.\d+)?)\s*h?$/i)
+  if (hours) {
+    return Date.now() + Number(hours[1]) * 3_600_000
+  }
+
+  const parsed = Date.parse(raw)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+function useAnnouncementCountdown(target: string): string | null {
+  const [now, setNow] = useState(() => Date.now())
+  const endsAt = parseCountdownTarget(target)
+
+  useEffect(() => {
+    if (endsAt === null) {
+      return
+    }
+
+    if (endsAt - Date.now() <= 0) {
+      return
+    }
+
+    const timer = setInterval(() => setNow(Date.now()), 1_000)
+    return () => clearInterval(timer)
+ }, [target, endsAt])
+
+  if (endsAt === null) {
+    return null
+  }
+
+  const remaining = Math.max(0, endsAt - now)
+  const days = Math.floor(remaining / 86_400_000)
+  const hours = Math.floor((remaining % 86_400_000) / 3_600_000)
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000)
+  const seconds = Math.floor((remaining % 60_000) / 1_000)
+
+  if (remaining <= 0) {
+    return "Offer ended"
+  }
+
+  return days > 0
+    ? `${days}d ${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`
+    : `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`
 }
 
 export function SectionHeading({

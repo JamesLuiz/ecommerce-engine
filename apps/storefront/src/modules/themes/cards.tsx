@@ -11,16 +11,19 @@ import HitPrice, {
 } from "@modules/store/components/store-hits/price"
 
 import { resolveLayoutId, type LayoutId, type ThemedProduct } from "./registry"
+import { AirCard } from "./layouts/air"
 import { AuroraCard } from "./layouts/aurora"
 import { BreezeCard } from "./layouts/breeze"
 import { BrutalCard } from "./layouts/brutal"
 import { ChromeCard } from "./layouts/chrome"
 import { EmberCard } from "./layouts/ember"
+import { LiquidCard } from "./layouts/liquid"
 import { LuxeCard } from "./layouts/luxe"
 import { MinimalCard } from "./layouts/minimal"
 import { PopCard } from "./layouts/pop"
 import { StreetCard } from "./layouts/street"
 import { TerraCard } from "./layouts/terra"
+import { TitaniumCard } from "./layouts/titanium"
 
 /**
  * Renders a single product with the active layout's card design.
@@ -58,6 +61,12 @@ export function ThemedProductCard({
       return <ChromeCard product={product} index={index} />
     case "pop":
       return <PopCard product={product} index={index} />
+    case "air":
+      return <AirCard product={product} index={index} />
+    case "titanium":
+      return <TitaniumCard product={product} index={index} />
+    case "liquid":
+      return <LiquidCard product={product} index={index} />
     case "minimal":
     default:
       return <MinimalCard product={product} index={index} />
@@ -169,6 +178,27 @@ const HIT_FRAMES: Record<
     imageWrap: "overflow-hidden rounded-[14px] border-2 border-[#232323]/10",
     badge: "Yum",
     title: "font-black text-[#232323]",
+  },
+  air: {
+    shell:
+      "group block overflow-hidden rounded-[20px] border border-black/[0.06] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]",
+    imageWrap: "overflow-hidden",
+    badge: "New",
+    title: "font-semibold tracking-tight text-[#1d1d1f]",
+  },
+  titanium: {
+    shell:
+      "group block overflow-hidden rounded-xl border border-white/20 bg-gradient-to-b from-[#3a3a3c] to-[#1c1c1e] p-2.5 transition-all duration-300 hover:-translate-y-1",
+    imageWrap: "overflow-hidden rounded-lg",
+    badge: "Pro",
+    title: "font-semibold text-[#f5f5f7]",
+  },
+  liquid: {
+    shell:
+      "group block overflow-hidden rounded-[24px] border border-white/30 bg-white/20 p-2.5 backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1.5",
+    imageWrap: "overflow-hidden rounded-[18px]",
+    badge: "New",
+    title: "font-semibold text-[#1d1d1f]",
   },
 }
 

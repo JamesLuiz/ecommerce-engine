@@ -47,6 +47,9 @@ export const LAYOUT_ACCENTS: Partial<Record<LayoutId, string>> = {
   terra: "#5b7d3c",
   chrome: "#38e1ff",
   pop: "#ff3ea5",
+  air: "#0071e3",
+  titanium: "#b9bec7",
+  liquid: "#64d2ff",
 }
 
 export type ThemedProduct = HttpTypes.StoreProduct

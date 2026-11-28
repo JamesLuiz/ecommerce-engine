@@ -40,7 +40,7 @@ const sections: Section[] = [
       "Promotional/notice bar (when enabled) and navigation/menu links used to guide shoppers around the store.",
     changeInBackend: [
       "Go to Admin → Settings → Storefront → Navigation & features.",
-      "Enable and edit the Announcement bar text and optional CTA label/link.",
+ "Enable and edit the Announcement bar text and optional CTA label/link - it renders on every layout theme; pick Standard, Sale, or Countdown offer style and set a countdown end date or hours for countdown offers.",
       "Add or edit Navigation links (label and destination path such as /store, /account, or custom pages).",
       "Save storefront settings.",
     ],
@@ -140,7 +140,7 @@ const sections: Section[] = [
       "Global colors, typography feel, layout styles, and page metadata/social sharing previews.",
     changeInBackend: [
       "Go to Admin → Settings → Storefront → Branding and Theme & layout to adjust colors, fonts, corner radius, mode, layout design, and layout styles.",
-      "Pick a Storefront layout (Minimal, Aurora, Luxe Noire, Streetline, Brutalist, Breeze, Ember, Terra, Chrome, Pop Candy) to re-skin the whole storefront — same products and content, brand-new design.",
+      "Pick a Storefront layout (Minimal, Aurora, Luxe Noire, Streetline, Brutalist, Breeze, Ember, Terra, Chrome, Pop Candy, Air, Titanium, Liquid Glass) to re-skin the whole storefront — same products and content, brand-new design.",
       "Go to Admin → Settings → Storefront → SEO to set default title, title template, description, keywords, and social image.",
       "Go to Admin → Settings → Storefront → Media to upload and assign a social/OG image.",
       "Save storefront settings.",

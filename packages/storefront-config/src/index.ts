@@ -16,7 +16,7 @@ export const storefrontThemeModeSchema = z.enum(["light", "dark", "system"])
 /**
  * Storefront layout designs selectable from Settings → Storefront.
  *
- * `minimal` is the original default look. The nine `aurora`…`pop` entries are
+ * `minimal` is the original default look. The `aurora`…`liquid` entries are
  * the switchable high-end layouts: each one rearranges the same homepage
  * sections (hero, showcase, featured, arrivals, collection rails) and renders
  * its own product-card shape, palette, and motion.
@@ -39,6 +39,9 @@ export const storefrontThemePresetSchema = z.enum([
   "terra",
   "chrome",
   "pop",
+  "air",
+  "titanium",
+  "liquid",
 ])
 
 /** Layouts shown in the admin layout picker (legacy values hidden). */
@@ -53,6 +56,9 @@ export const STOREFRONT_LAYOUT_IDS = [
   "terra",
   "chrome",
   "pop",
+  "air",
+  "titanium",
+  "liquid",
 ] as const
 
 export type StorefrontLayoutId = (typeof STOREFRONT_LAYOUT_IDS)[number]
@@ -85,6 +91,9 @@ export const STOREFRONT_LAYOUT_META: Array<{
   { id: "terra", name: "Terra", tagline: "Earthy organic market" },
   { id: "chrome", name: "Chrome", tagline: "Futuristic glass tech" },
   { id: "pop", name: "Pop Candy", tagline: "Playful color clash" },
+  { id: "air", name: "Air", tagline: "Crisp Apple-style minimal" },
+  { id: "titanium", name: "Titanium", tagline: "Dark pro-grade premium" },
+  { id: "liquid", name: "Liquid Glass", tagline: "Frosted glass color flow" },
 ]
 export const storefrontHeaderStyleSchema = z.enum([
   "centered",
@@ -109,10 +118,14 @@ const colorSchema = z
 
 const storefrontHeroSchema = z.object({
   enabled: z.boolean().default(true),
-  eyebrow: z.string().default(""),
-  title: z.string().default(""),
-  heading: z.string().default(""),
-  description: z.string().default(""),
+  eyebrow: z.string().default("New season"),
+  title: z.string().default("Modern essentials"),
+  heading: z.string().default("Designed to feel as good as it looks."),
+  description: z
+    .string()
+    .default(
+      "Discover elevated products for everyday rituals, curated with premium quality, practical design, and next-level comfort."
+    ),
   primaryCta: z.string().default("Shop now"),
   secondaryCta: z.string().default("Learn more"),
   imageUrl: z.string().default(""),
@@ -158,25 +171,35 @@ const homepageSettingsSchema = z.object({
     .default([]),
 })
 
+export const storefrontAnnouncementBarStyleSchema = z.enum([
+  "standard",
+  "sale",
+  "countdown",
+])
+
 const storefrontFeatureFlagsSchema = z.object({
   announcementBarEnabled: z.boolean().default(true),
-  announcementBarText: z.string().default(""),
-  announcementBarCtaLabel: z.string().default(""),
-  announcementBarCtaHref: z.string().default("/"),
+  announcementBarText: z
+    .string()
+    .default("Welcome to our store - new drops every week"),
+  announcementBarCtaLabel: z.string().default("Shop now"),
+  announcementBarCtaHref: z.string().default("/store"),
+  announcementBarStyle: storefrontAnnouncementBarStyleSchema.default("standard"),
+  announcementBarCountdownEndsAt: z.string().default(""),
   showSearch: z.boolean().default(true),
   showAccount: z.boolean().default(true),
   showLocaleSelector: z.boolean().default(true),
   showCountrySelector: z.boolean().default(true),
-  whatsappEnabled: z.boolean().default(false),
-  whatsappNumber: z.string().default(""),
-  newsletterEnabled: z.boolean().default(false),
+  whatsappEnabled: z.boolean().default(true),
+  whatsappNumber: z.string().default("2348000000000"),
+  newsletterEnabled: z.boolean().default(true),
 })
 
 const storefrontFooterContactSchema = z.object({
-  email: z.string().default(""),
-  phone: z.string().default(""),
-  address: z.string().default(""),
-  hours: z.string().default(""),
+  email: z.string().default("hello@example.com"),
+  phone: z.string().default("+234 800 000 0000"),
+  address: z.string().default("Lagos, Nigeria"),
+  hours: z.string().default("Mon-Sat, 9am-6pm"),
 })
 
 /**
@@ -294,10 +317,10 @@ const storefrontFooterLegalSchema = z.object({
 
 const storefrontFooterSchema = z.object({
   contact: storefrontFooterContactSchema.default({
-    email: "",
-    phone: "",
-    address: "",
-    hours: "",
+    email: "hello@example.com",
+    phone: "+234 800 000 0000",
+    address: "Lagos, Nigeria",
+    hours: "Mon-Sat, 9am-6pm",
   }),
   socials: z.array(storefrontFooterSocialSchema).default([]),
   legal: z.array(storefrontFooterLegalSchema).default([]),
@@ -306,10 +329,16 @@ const storefrontFooterSchema = z.object({
 })
 
 const storefrontSeoSchema = z.object({
-  defaultTitle: z.string().default(""),
+  defaultTitle: z.string().default("Flowcheq Commerce"),
   titleTemplate: z.string().default("%s | {store}"),
-  description: z.string().default(""),
-  keywords: z.array(z.string()).default([]),
+  description: z
+    .string()
+    .default(
+      "Shop quality products online - fast delivery, secure checkout, and new drops every week."
+    ),
+  keywords: z
+    .array(z.string())
+    .default(["online store", "shop", "new drops", "fast delivery"]),
   ogImageUrl: z.string().default(""),
 })
 
@@ -359,10 +388,11 @@ export const storefrontSettingsSchema = z.object({
   homepage: homepageSettingsSchema.default({
     hero: {
       enabled: true,
-      eyebrow: "",
-      title: "",
-      heading: "",
-      description: "",
+      eyebrow: "New season",
+      title: "Modern essentials",
+      heading: "Designed to feel as good as it looks.",
+      description:
+        "Discover elevated products for everyday rituals, curated with premium quality, practical design, and next-level comfort.",
       primaryCta: "Shop now",
       secondaryCta: "Learn more",
       imageUrl: "",
@@ -378,7 +408,11 @@ export const storefrontSettingsSchema = z.object({
       href: "/store",
     },
     featuredEnabled: true,
-    stats: [],
+    stats: [
+      { value: "4.9", label: "Avg rating" },
+      { value: "2k+", label: "Happy customers" },
+      { value: "48h", label: "Fast delivery" },
+    ],
   }),
   navigation: z.object({
     links: z
@@ -389,37 +423,51 @@ export const storefrontSettingsSchema = z.object({
         }),
       )
       .default([]),
-  }).default({ links: [] }),
+  }).default({
+    links: [
+      { label: "Home", href: "/" },
+      { label: "Shop", href: "/store" },
+      { label: "About", href: "/about" },
+      { label: "Contact", href: "/contact" },
+    ],
+  }),
   features: storefrontFeatureFlagsSchema.default({
     announcementBarEnabled: true,
-    announcementBarText: "",
-    announcementBarCtaLabel: "",
-    announcementBarCtaHref: "/",
+    announcementBarText: "Welcome to our store - new drops every week",
+    announcementBarCtaLabel: "Shop now",
+    announcementBarCtaHref: "/store",
+    announcementBarStyle: "standard",
+    announcementBarCountdownEndsAt: "",
     showSearch: true,
     showAccount: true,
     showLocaleSelector: true,
     showCountrySelector: true,
-    whatsappEnabled: false,
-    whatsappNumber: "",
-    newsletterEnabled: false,
+    whatsappEnabled: true,
+    whatsappNumber: "2348000000000",
+    newsletterEnabled: true,
   }),
   footer: storefrontFooterSchema.default({
     contact: {
-      email: "",
-      phone: "",
-      address: "",
-      hours: "",
+      email: "hello@example.com",
+      phone: "+234 800 000 0000",
+      address: "Lagos, Nigeria",
+      hours: "Mon-Sat, 9am-6pm",
     },
     socials: [],
-    legal: [],
+    legal: [
+      { label: "Shipping & Returns", href: "/shipping" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+    ],
     copyright: "",
     poweredBy: true,
   }),
   seo: storefrontSeoSchema.default({
-    defaultTitle: "",
+    defaultTitle: "Flowcheq Commerce",
     titleTemplate: "%s | {store}",
-    description: "",
-    keywords: [],
+    description:
+      "Shop quality products online - fast delivery, secure checkout, and new drops every week.",
+    keywords: ["online store", "shop", "new drops", "fast delivery"],
     ogImageUrl: "",
   }),
 })

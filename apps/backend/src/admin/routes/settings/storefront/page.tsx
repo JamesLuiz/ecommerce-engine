@@ -70,10 +70,10 @@ const emptySettings = (): StorefrontSettings => ({
   homepage: {
     hero: {
       enabled: true,
-      eyebrow: "",
-      title: "",
-      heading: "",
-      description: "",
+      eyebrow: "New season",
+      title: "Modern essentials",
+      heading: "Designed to feel as good as it looks.",
+      description: "Discover elevated products for everyday rituals, curated with premium quality, practical design, and next-level comfort.",
       primaryCta: "Shop now",
       secondaryCta: "Learn more",
       imageUrl: "",
@@ -89,34 +89,56 @@ const emptySettings = (): StorefrontSettings => ({
       href: "/store",
     },
     featuredEnabled: true,
-    stats: [],
+    stats: [
+    { value: "4.9", label: "Avg rating" },
+    { value: "2k+", label: "Happy customers" },
+    { value: "48h", label: "Fast delivery" },
+    ],
   },
-  navigation: { links: [] },
+  navigation: {
+links: [
+{ label: "Home", href: "/" },
+{ label: "Shop", href: "/store" },
+{ label: "About", href: "/about" },
+{ label: "Contact", href: "/contact" },
+],
+},
   features: {
     announcementBarEnabled: true,
-    announcementBarText: "",
-    announcementBarCtaLabel: "",
-    announcementBarCtaHref: "/",
+    announcementBarText: "Welcome to our store - new drops every week",
+    announcementBarCtaLabel: "Shop now",
+    announcementBarCtaHref: "/store",
+    announcementBarStyle: "standard",
+    announcementBarCountdownEndsAt: "",
     showSearch: true,
     showAccount: true,
     showLocaleSelector: true,
     showCountrySelector: true,
-    whatsappEnabled: false,
-    whatsappNumber: "",
-    newsletterEnabled: false,
+    whatsappEnabled: true,
+    whatsappNumber: "2348000000000",
+    newsletterEnabled: true,
   },
   footer: {
-    contact: { email: "", phone: "", address: "", hours: "" },
+    contact: {
+    email: "hello@example.com",
+    phone: "+234 800 000 0000",
+    address: "Lagos, Nigeria",
+    hours: "Mon-Sat, 9am-6pm",
+    },
     socials: [],
-    legal: [],
+    legal: [
+    { label: "Shipping & Returns", href: "/shipping" },
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
+    ],
     copyright: "",
     poweredBy: true,
   },
   seo: {
-    defaultTitle: "",
+    defaultTitle: "Flowcheq Commerce",
     titleTemplate: "%s | {store}",
-    description: "",
-    keywords: [],
+    description: "Shop quality products online - fast delivery, secure checkout, and new drops every week.",
+    keywords: ["online store", "shop", "new drops", "fast delivery"],
     ogImageUrl: "",
   },
 })
@@ -175,6 +197,7 @@ const BrandingSection = ({
         <Label htmlFor="storefront-brand-tagline">Tagline</Label>
         <Input
           id="storefront-brand-tagline"
+          placeholder="Quality goods, delivered fast"
           value={brand.tagline}
           onChange={(event) => updateBrand({ tagline: event.target.value })}
         />
@@ -184,6 +207,7 @@ const BrandingSection = ({
         <Label htmlFor="storefront-brand-description">Store description</Label>
         <Textarea
           id="storefront-brand-description"
+          placeholder="Tell shoppers what makes your store special"
           value={brand.description}
           onChange={(event) => updateBrand({ description: event.target.value })}
         />
@@ -193,6 +217,7 @@ const BrandingSection = ({
         <Label htmlFor="storefront-brand-vendor">Vendor full name</Label>
         <Input
           id="storefront-brand-vendor"
+          placeholder="e.g. Flowcheq Ltd."
           value={brand.vendorName}
           onChange={(event) => updateBrand({ vendorName: event.target.value })}
         />
@@ -202,6 +227,7 @@ const BrandingSection = ({
         <Label htmlFor="storefront-brand-logo-url">Logo URL</Label>
         <Input
           id="storefront-brand-logo-url"
+          placeholder="https://... or upload below"
           value={brand.logoUrl}
           onChange={(event) => updateBrand({ logoUrl: event.target.value })}
         />
@@ -407,6 +433,7 @@ const HomeSection = ({
         <Label htmlFor="storefront-hero-eyebrow">Hero eyebrow</Label>
         <Input
           id="storefront-hero-eyebrow"
+          placeholder="New season"
           value={hero.eyebrow}
           onChange={(event) => updateHomepage({ hero: { ...hero, eyebrow: event.target.value } })}
         />
@@ -416,6 +443,7 @@ const HomeSection = ({
         <Label htmlFor="storefront-hero-title">Hero title</Label>
         <Input
           id="storefront-hero-title"
+          placeholder="Modern essentials"
           value={hero.title}
           onChange={(event) => updateHomepage({ hero: { ...hero, title: event.target.value } })}
         />
@@ -425,6 +453,7 @@ const HomeSection = ({
         <Label htmlFor="storefront-hero-heading">Hero heading</Label>
         <Input
           id="storefront-hero-heading"
+          placeholder="Designed to feel as good as it looks."
           value={hero.heading}
           onChange={(event) => updateHomepage({ hero: { ...hero, heading: event.target.value } })}
         />
@@ -434,6 +463,7 @@ const HomeSection = ({
         <Label htmlFor="storefront-hero-description">Hero description</Label>
         <Textarea
           id="storefront-hero-description"
+          placeholder="Describe your hero offer in one or two sentences"
           value={hero.description}
           onChange={(event) => updateHomepage({ hero: { ...hero, description: event.target.value } })}
         />
@@ -443,6 +473,7 @@ const HomeSection = ({
         <Label htmlFor="storefront-hero-primary-cta">Primary CTA</Label>
         <Input
           id="storefront-hero-primary-cta"
+          placeholder="Shop now"
           value={hero.primaryCta}
           onChange={(event) => updateHomepage({ hero: { ...hero, primaryCta: event.target.value } })}
         />
@@ -452,6 +483,7 @@ const HomeSection = ({
         <Label htmlFor="storefront-hero-secondary-cta">Secondary CTA</Label>
         <Input
           id="storefront-hero-secondary-cta"
+          placeholder="Learn more"
           value={hero.secondaryCta}
           onChange={(event) => updateHomepage({ hero: { ...hero, secondaryCta: event.target.value } })}
         />
@@ -461,6 +493,7 @@ const HomeSection = ({
         <Label htmlFor="storefront-hero-image-url">Hero image URL</Label>
         <Input
           id="storefront-hero-image-url"
+          placeholder="https://... hero banner image"
           value={hero.imageUrl}
           onChange={(event) => updateHomepage({ hero: { ...hero, imageUrl: event.target.value } })}
         />
@@ -538,6 +571,7 @@ const HomeSection = ({
         <Label htmlFor="storefront-showcase-image">Card image URL</Label>
         <Input
           id="storefront-showcase-image"
+          placeholder="https://... featured card image"
           value={showcase.imageUrl}
           onChange={(event) =>
             updateHomepage({
@@ -624,7 +658,7 @@ const NavigationFeaturesSection = ({
       </div>
 
       <div style={{ display: "grid", gap: 8 }}>
-        <Text size="small">Announcement bar</Text>
+        <Text size="small">Announcement bar (shows on every layout theme)</Text>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <Switch
             checked={settings.features.announcementBarEnabled}
@@ -635,23 +669,56 @@ const NavigationFeaturesSection = ({
           <Text size="small">Show announcement bar</Text>
         </div>
         <Input
+          placeholder="Welcome to our store - new drops every week"
           value={settings.features.announcementBarText}
           onChange={(event) =>
             updateFeatures({ announcementBarText: event.target.value })
           }
         />
         <Input
+          placeholder="Shop now"
           value={settings.features.announcementBarCtaLabel}
           onChange={(event) =>
             updateFeatures({ announcementBarCtaLabel: event.target.value })
           }
         />
         <Input
+          placeholder="/store"
           value={settings.features.announcementBarCtaHref}
           onChange={(event) =>
             updateFeatures({ announcementBarCtaHref: event.target.value })
           }
         />
+ <div style={{ display: "grid", gap: 8 }}>
+ <Label htmlFor="storefront-announcement-style">Announcement style</Label>
+ <Select
+ value={settings.features.announcementBarStyle ?? "standard"}
+ onValueChange={(value) =>
+ updateFeatures({ announcementBarStyle: value as StorefrontSettings["features"]["announcementBarStyle"] })
+ }
+ >
+ <Select.Trigger>
+ <Select.Value placeholder="Announcement style" />
+ </Select.Trigger>
+ <Select.Content>
+ <Select.Item value="standard">Standard</Select.Item>
+ <Select.Item value="sale">Sale</Select.Item>
+ <Select.Item value="countdown">Countdown offer</Select.Item>
+ </Select.Content>
+ </Select>
+ <Text size="small" className="text-ui-fg-subtle">
+ Countdown shows a live timer chip. Pick Countdown offer and set an end date or hours (e.g. 48).
+ </Text>
+ <Label htmlFor="storefront-announcement-countdown">Countdown ends at</Label>
+ <Input
+ id="storefront-announcement-countdown"
+ placeholder="2030-01-01T00:00 or hours like 48"
+ value={settings.features.announcementBarCountdownEndsAt ?? ""}
+ onChange={(event) =>
+ updateFeatures({ announcementBarCountdownEndsAt: event.target.value })
+ }
+ />
+ </div>
       </div>
 
       <div style={{ display: "grid", gap: 8 }}>
@@ -705,6 +772,7 @@ const NavigationFeaturesSection = ({
           </div>
         </div>
         <Input
+          placeholder="2348000000000"
           value={settings.features.whatsappNumber}
           onChange={(event) => updateFeatures({ whatsappNumber: event.target.value })}
         />

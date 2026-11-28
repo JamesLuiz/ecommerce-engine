@@ -5,15 +5,18 @@ import { useStoreConfig } from "@lib/config-provider"
 import { resolveHomeContent } from "./content"
 import { resolveLayoutId, type HomeData, type LayoutId } from "./registry"
 import AuroraLayout from "./layouts/aurora"
+import AirLayout from "./layouts/air"
 import BreezeLayout from "./layouts/breeze"
 import BrutalLayout from "./layouts/brutal"
 import ChromeLayout from "./layouts/chrome"
 import EmberLayout from "./layouts/ember"
+import LiquidLayout from "./layouts/liquid"
 import LuxeLayout from "./layouts/luxe"
 import MinimalLayout from "./layouts/minimal"
 import PopLayout from "./layouts/pop"
 import StreetLayout from "./layouts/street"
 import TerraLayout from "./layouts/terra"
+import TitaniumLayout from "./layouts/titanium"
 
 /**
  * Switchable storefront homepage.
@@ -48,6 +51,9 @@ export default function ThemedHome(data: HomeData) {
       {layoutId === "terra" && <TerraLayout {...layoutProps} />}
       {layoutId === "chrome" && <ChromeLayout {...layoutProps} />}
       {layoutId === "pop" && <PopLayout {...layoutProps} />}
+      {layoutId === "air" && <AirLayout {...layoutProps} />}
+      {layoutId === "titanium" && <TitaniumLayout {...layoutProps} />}
+      {layoutId === "liquid" && <LiquidLayout {...layoutProps} />}
       {layoutId === "minimal" && <MinimalLayout {...layoutProps} />}
     </div>
   )

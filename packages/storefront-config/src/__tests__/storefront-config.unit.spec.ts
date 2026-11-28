@@ -23,6 +23,10 @@ describe("storefront settings", () => {
     expect(settings.layout.headerStyle).toBe("centered")
     expect(settings.features.showSearch).toBe(true)
     expect(settings.footer.poweredBy).toBe(true)
+ expect(settings.features.announcementBarStyle).toBe("standard")
+ expect(settings.features.announcementBarText).toBe("Welcome to our store - new drops every week")
+ expect(settings.homepage.hero.title).toBe("Modern essentials")
+ expect(settings.homepage.stats.length).toBeGreaterThan(0)
   })
 
   it("parses a full storefront settings payload", () => {
@@ -61,16 +65,32 @@ describe("storefront settings", () => {
       expect(settings.theme.preset).toBe(preset)
     }
 
-    expect(STOREFRONT_LAYOUT_IDS).toHaveLength(10)
+    expect(STOREFRONT_LAYOUT_IDS).toHaveLength(13)
     expect(STOREFRONT_LAYOUT_IDS).toContain("minimal")
     expect(STOREFRONT_LAYOUT_IDS).toContain("aurora")
     expect(STOREFRONT_LAYOUT_IDS).toContain("pop")
+ expect(STOREFRONT_LAYOUT_IDS).toContain("air")
+ expect(STOREFRONT_LAYOUT_IDS).toContain("titanium")
+ expect(STOREFRONT_LAYOUT_IDS).toContain("liquid")
     expect(LEGACY_PRESET_FALLBACKS).toMatchObject({
       editorial: "luxe",
       bold: "street",
       classic: "terra",
     })
   })
+
+ it("accepts announcement style and countdown end values", () => {
+ for (const style of ["standard", "sale", "countdown"] as const) {
+ const settings = storefrontSettingsSchema.parse({
+ features: { announcementBarStyle: style, announcementBarCountdownEndsAt: "2030-01-01T00:00:00Z" },
+ })
+ expect(settings.features.announcementBarStyle).toBe(style)
+ }
+ const settings = storefrontSettingsSchema.parse({
+ features: { announcementBarCountdownEndsAt: "48" },
+ })
+ expect(settings.features.announcementBarCountdownEndsAt).toBe("48")
+ })
 
   it("merges nested storefront metadata over defaults", () => {
     const settings = normalizeStorefrontSettings({
